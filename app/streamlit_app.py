@@ -761,86 +761,40 @@ elif view == "Portfolio vs mandate":
         st.warning("No portfolio-level result.")
     else:
         exposure = portfolio.exposure
-        left, right = st.columns([3, 2])
 
-        with left:
-            # No table of the four headline figures here. The strip at the top
-            # of every page already carries the portfolio IRR, the benchmark's
-            # return on the same cashflows, and the alpha between them; a
-            # second copy a few centimetres below was three numbers restated
-            # and one -- KS-PME -- that says what the alpha already says.
-
-            verdict = ("beat its mandate" if portfolio.beat_mandate
-                       else "lost to its mandate")
-            share = len(analysis.outperformers) / max(len(scored), 1)
-            if portfolio.beat_mandate and share < 0.5:
-                read = ("Allocation, not selection, is carrying the result: the "
-                        "book is ahead of its benchmark while most holdings "
-                        "trail their own sectors.")
-            elif portfolio.beat_mandate:
-                read = "Selection is doing the work, and it shows at both levels."
-            elif share >= 0.5:
-                read = ("Stock picking is working but allocation is offsetting "
-                        "it: most holdings beat their sectors, yet the book "
-                        "still trails its mandate.")
-            else:
-                read = ("Both levels are weak, which points at strategy rather "
-                        "than at individual names.")
-
-            st.markdown(
-                brand.card(
-                    "What the two levels say together",
-                    f"The book <b>{verdict}</b> by "
-                    f"<b>{abs(portfolio.direct_alpha or 0) * 100:.1f}%</b> a "
-                    f"year, while <b>{len(analysis.outperformers)} of "
-                    f"{len(scored)}</b> holdings ({share:.0%}) beat their own "
-                    f"sector. {read}"
-                    # Both figures here are whole-life, so a position opened
-                    # this week is in neither. Said, rather than left as a
-                    # denominator that does not match the header.
-                    + (f" {len(analysis.holdings) - len(scored)} of the "
-                       f"{len(analysis.holdings)} positions are too recent to "
-                       f"have a whole-life return and are not counted either "
-                       f"way."
-                       if len(scored) != len(analysis.holdings) else ""),
-                ),
-                unsafe_allow_html=True,
-            )
-
-        with right:
-            st.markdown('<div class="ps-section">Mandate</div>',
+        st.markdown('<div class="ps-section">Mandate</div>',
+                    unsafe_allow_html=True)
+        d = portfolio.decision
+        label = {"model": "proposed by model", "rules": "rules fallback",
+                 "analyst": "chosen by analyst"}.get(d.source, d.source)
+        # The mandate leads, because that is what this panel is headed.
+        # The index and its ticker follow as the comparator chosen for it.
+        st.markdown(
+            f'<div style="font-family:{brand.FONT_DISPLAY};font-weight:700;'
+            f'font-size:1rem;" class="ps-section">'
+            f'{escape(mandate_scope(portfolio))}</div>'
+            f'<div style="color:{brand.MUTED};font-size:.82rem;'
+            f'margin-bottom:.5rem;">Measured against '
+            f'<b>{escape(mandate_index(portfolio))}</b>'
+            f'{DOT}{escape(d.benchmark_ticker)}<br>'
+            f'run over this book&rsquo;s own cashflows and dates</div>'
+            + brand.pill(label, "" if d.source == "model" else "navy")
+            # A confidence is the model's, and only means something on a
+            # proposal. Printing "confidence 100%" against a person's own
+            # choice reads as a score for the analyst.
+            + (brand.pill(f"confidence {d.confidence:.0%}", "navy")
+               if d.source == "model" else ""),
+            unsafe_allow_html=True,
+        )
+        if d.rationale:
+            # Escaped: a rationale is model output or contains an analyst's
+            # email, and either can carry characters that render as markup.
+            st.markdown(brand.note("Why this benchmark",
+                                   escape(d.rationale)),
                         unsafe_allow_html=True)
-            d = portfolio.decision
-            label = {"model": "proposed by model", "rules": "rules fallback",
-                     "analyst": "chosen by analyst"}.get(d.source, d.source)
-            # The mandate leads, because that is what this panel is headed.
-            # The index and its ticker follow as the comparator chosen for it.
-            st.markdown(
-                f'<div style="font-family:{brand.FONT_DISPLAY};font-weight:700;'
-                f'font-size:1rem;" class="ps-section">'
-                f'{escape(mandate_scope(portfolio))}</div>'
-                f'<div style="color:{brand.MUTED};font-size:.82rem;'
-                f'margin-bottom:.5rem;">Measured against '
-                f'<b>{escape(mandate_index(portfolio))}</b>'
-                f'{DOT}{escape(d.benchmark_ticker)}<br>'
-                f'run over this book&rsquo;s own cashflows and dates</div>'
-                + brand.pill(label, "" if d.source == "model" else "navy")
-                # A confidence is the model's, and only means something on a
-                # proposal. Printing "confidence 100%" against a person's own
-                # choice reads as a score for the analyst.
-                + (brand.pill(f"confidence {d.confidence:.0%}", "navy")
-                   if d.source == "model" else ""),
-                unsafe_allow_html=True,
-            )
-            if d.rationale:
-                # Escaped: a rationale is model output or contains an analyst's
-                # email, and either can carry characters that render as markup.
-                st.markdown(brand.note("Why this benchmark",
-                                       escape(d.rationale)),
-                            unsafe_allow_html=True)
-            st.markdown(brand.section("Change the benchmark"),
-                        unsafe_allow_html=True)
-            benchmark_picker(d, MANDATES, "mandate")
+        st.markdown(brand.section("Change the benchmark"),
+                    unsafe_allow_html=True)
+        benchmark_picker(d, MANDATES, "mandate")
 
         # -- return over a window ---------------------------------------------
         #

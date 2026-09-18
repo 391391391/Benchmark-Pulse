@@ -25,7 +25,7 @@ def pct(x: float | None) -> str:
 
 def main() -> None:
     print(f"data root: {describe()}\n")
-    result = analyse(DEMO_BOOK, portfolio_name="XYZ Investments")
+    result = analyse(DEMO_BOOK, portfolio_name="PS Investments")
 
     print(f"Loaded: {result.load_report}")
     for s in result.load_report.skipped:

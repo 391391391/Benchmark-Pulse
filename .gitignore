@@ -17,6 +17,7 @@ data/portfolios/
 # megabytes of churn that says nothing about the code.
 data/cache/
 data/demo/*.xlsx
+!data/demo/xyz_investments_portfolio.xlsx
 data/*.json
 
 # Python ----------------------------------------------------------------

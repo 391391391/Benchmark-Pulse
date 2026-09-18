@@ -1,0 +1,42 @@
+# Secrets ---------------------------------------------------------------
+# .env holds a live Gemini API key. A key committed once is compromised even
+# after it is deleted, because it stays in the history and in every clone.
+# .env.example is the file that belongs in the repository.
+.env
+*.key
+*.pem
+
+# Client data -----------------------------------------------------------
+# Uploaded portfolios are somebody's actual holdings, kept alongside the
+# workbook derived from them. They are the last thing that should reach a
+# shared remote.
+data/portfolios/
+
+# Generated and cached --------------------------------------------------
+# Price series, model responses and filings, all refetched on demand. A few
+# megabytes of churn that says nothing about the code.
+data/cache/
+data/demo/*.xlsx
+data/*.json
+
+# Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments. This project's own venv lives at C:\dev\bp-venv,
+# deliberately outside the synced folder; these cover the usual local ones.
+.venv/
+venv/
+env/
+
+# Editors and operating systems ------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

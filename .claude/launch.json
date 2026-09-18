@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "benchmark-pulse",
+      "runtimeExecutable": "C:\\dev\\bp-venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "streamlit", "run", "app/streamlit_app.py",
+                      "--server.port", "8501",
+                      "--server.headless", "true",
+                      "--browser.gatherUsageStats", "false"],
+      "port": 8501
+    }
+  ]
+}

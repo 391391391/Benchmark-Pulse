@@ -1,0 +1,13 @@
+# Only the accent colour is pinned here. Specifying a full [theme] block
+# (background, text, base) makes Streamlit hide the theme editor from the
+# toolbar menu, which takes the light/dark switch away from the viewer.
+# The rest of the brand styling is applied by brand.py instead.
+
+[theme]
+primaryColor = "#2BB9A8"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "auto"

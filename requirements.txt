@@ -1,0 +1,34 @@
+# Verified working on Python 3.14.7, Windows 11, 15 Sep 2026.
+# Pinned rather than ranged: this is a pilot that has to run on a specific day.
+
+# --- analytics engine -------------------------------------------------------
+numpy==2.5.3
+pandas==3.0.5
+scipy==1.18.1            # brentq, for solving XIRR
+
+# --- market and reference data ---------------------------------------------
+yfinance==1.7.0          # share prices and index levels
+requests==2.34.2         # ECB reference rates
+
+# --- file ingestion ---------------------------------------------------------
+openpyxl==3.1.5          # Excel
+pdfplumber==0.11.10      # PDF statements
+python-pptx==1.0.2       # PowerPoint review decks
+
+# --- application -----------------------------------------------------------
+streamlit==1.63.0
+plotly==7.0.0
+
+# --- language model providers ----------------------------------------------
+# Only one is needed. Gemini is the default; the adapter in llm.py switches on
+# whichever key is present, and runs on templates with no key at all.
+google-genai==2.23.0
+groq==1.7.0
+anthropic==1.5.0
+
+# --- supporting ------------------------------------------------------------
+python-dotenv==1.2.3
+SQLAlchemy==2.0.52
+
+# --- development -----------------------------------------------------------
+pytest==9.1.1

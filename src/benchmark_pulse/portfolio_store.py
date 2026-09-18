@@ -32,7 +32,7 @@ REGISTRY = STORE_DIR / "registry.json"
 EDITS = STORE_DIR / "edits.json"
 
 DEMO_ID = "demo-xyz"
-DEMO_NAME = "XYZ Investments (sample)"
+DEMO_NAME = "PS Investments (sample)"
 
 #: The filename every edited book is written to, inside the portfolio's own
 #: workspace.

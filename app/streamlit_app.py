@@ -821,9 +821,8 @@ if view == "My investments":
                 legend=dict(orientation="v", x=1.03, y=0.5, yanchor="middle",
                            font=dict(size=10)),
                 annotations=[dict(
-                    text=f"{money(total)}<br><span style='font-size:9px;"
-                         f"letter-spacing:.08em;text-transform:uppercase;'>"
-                         f"total</span>",
+                    text=f"{money(total)}<br><span style='font-size:10px;"
+                         f"letter-spacing:.01em;'>Total</span>",
                     x=0.5, y=0.5, showarrow=False, align="center",
                     font=dict(size=15, color=brand.DARK_TEXT if dark else brand.INK),
                 )],

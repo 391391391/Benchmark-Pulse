@@ -24,6 +24,7 @@ Run:  streamlit run app/streamlit_app.py
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from datetime import datetime
@@ -198,88 +199,131 @@ def _remember(user, token: str) -> None:
     st.query_params[SESSION_PARAM] = token
 
 
+def _seed_admin_account() -> None:
+    """Recreate the admin account from configured credentials if it's gone.
+
+    Streamlit Community Cloud's disk is ephemeral -- data/users.json is
+    git-ignored on purpose, since it holds password hashes, and disappears on
+    every restart or redeploy. Without this, the deployed app would forget
+    every account it ever created and greet an analyst who signed in
+    yesterday with "create the first account" again today.
+
+    Credentials come from Streamlit secrets in the cloud (set once in the
+    app's dashboard) or matching environment variables locally; either way
+    this is a no-op once any account already exists.
+    """
+    if any_accounts():
+        return
+    try:
+        email = st.secrets.get("ADMIN_EMAIL") or os.getenv("BENCHMARK_PULSE_ADMIN_EMAIL")
+        name = st.secrets.get("ADMIN_NAME") or os.getenv("BENCHMARK_PULSE_ADMIN_NAME")
+        password = st.secrets.get("ADMIN_PASSWORD") or os.getenv("BENCHMARK_PULSE_ADMIN_PASSWORD")
+    except Exception:  # noqa: BLE001 - no secrets.toml at all is not an error
+        return
+    if not (email and name and password):
+        return
+    try:
+        create_user(email, name, password)
+    except AuthError:
+        pass
+
+
 def sign_in_screen() -> None:
     """The gate. Shown instead of the app until someone is signed in."""
     logo = brand.logo_data_uri()
     left, middle, right = st.columns([1, 1.1, 1])
 
     with middle:
-        st.write("")
-        st.write("")
-        if logo:
-            st.markdown(
-                f'<div style="background:{brand.NAVY_DEEP};border-radius:4px;'
-                f'padding:1.1rem 1.3rem;margin-bottom:1.4rem;">'
-                f'<img src="{logo}" style="width:100%;max-width:190px;'
-                f'display:block;">'
-                f'<div style="color:{brand.TEAL_LIGHT};font-size:.52rem;'
-                f'letter-spacing:.13em;text-transform:uppercase;font-weight:700;'
-                f'margin-top:.35rem;">{brand.TAGLINE}</div></div>',
-                unsafe_allow_html=True)
+        # Held in a placeholder so a successful sign-in can clear it outright,
+        # rather than leaving it on screen. Without this, the widgets already
+        # sent to the browser this run stay visible -- st.rerun() jumps
+        # straight into the app, which does not touch this position again, so
+        # the old form sat frozen under the "fetching live prices" spinner of
+        # the run that follows until that run finished.
+        gate = st.empty()
+        signed_in: object | None = None
 
-        first_run = not any_accounts()
-        if first_run:
-            st.markdown(brand.section("Create the first account"),
-                        unsafe_allow_html=True)
-            st.markdown(
-                brand.note(
-                    "No accounts exist yet",
-                    "The first account created becomes the administrator. Your "
-                    "name is what appears against every benchmark you sign off, "
-                    "so use the one a client would recognise.",
-                ), unsafe_allow_html=True)
-        else:
-            st.markdown(brand.section("Sign in"), unsafe_allow_html=True)
+        with gate.container():
+            st.write("")
+            st.write("")
+            if logo:
+                st.markdown(
+                    f'<div style="background:{brand.NAVY_DEEP};border-radius:4px;'
+                    f'padding:1.1rem 1.3rem;margin-bottom:1.4rem;">'
+                    f'<img src="{logo}" style="width:100%;max-width:190px;'
+                    f'display:block;">'
+                    f'<div style="color:{brand.TEAL_LIGHT};font-size:.52rem;'
+                    f'letter-spacing:.13em;text-transform:uppercase;font-weight:700;'
+                    f'margin-top:.35rem;">{brand.TAGLINE}</div></div>',
+                    unsafe_allow_html=True)
 
-        with st.form("sign_in", border=False):
-            email = st.text_input("Email", placeholder="you@preferredsquare.com")
-            name = st.text_input("Full name",
-                                 placeholder="e.g. Aditya Bhuttani") if first_run else ""
-            password = st.text_input(
-                "Password", type="password",
-                help=f"At least {MIN_PASSWORD_LENGTH} characters. A short "
-                     "phrase is stronger than a short password."
-                if first_run else None)
-            submitted = st.form_submit_button(
-                "Create account" if first_run else "Sign in",
-                type="primary", use_container_width=True)
-
-        if submitted:
-            try:
-                user = (create_user(email, name, password) if first_run
-                        else authenticate(email, password))
-            except AuthError as exc:
-                st.markdown(brand.note("Could not sign in", str(exc), "bad"),
+            first_run = not any_accounts()
+            if first_run:
+                st.markdown(brand.section("Create the first account"),
                             unsafe_allow_html=True)
+                st.markdown(
+                    brand.note(
+                        "No accounts exist yet",
+                        "The first account created becomes the administrator. Your "
+                        "name is what appears against every benchmark you sign off, "
+                        "so use the one a client would recognise.",
+                    ), unsafe_allow_html=True)
             else:
-                _remember(user, start_session(user))
-                st.rerun()
+                st.markdown(brand.section("Sign in"), unsafe_allow_html=True)
 
-        if not first_run:
-            with st.expander("Add another analyst"):
-                st.caption("Anyone with access to this machine can register. "
-                           "For firmwide use this is replaced by Microsoft "
-                           "Entra ID single sign-on.")
-                with st.form("register", border=False):
-                    r_email = st.text_input("Email", key="r_email")
-                    r_name = st.text_input("Full name", key="r_name")
-                    r_pass = st.text_input("Password", type="password",
-                                           key="r_pass")
-                    if st.form_submit_button("Create account",
-                                             use_container_width=True):
-                        try:
-                            create_user(r_email, r_name, r_pass)
-                        except AuthError as exc:
-                            st.markdown(brand.note("Could not create", str(exc),
-                                                   "bad"), unsafe_allow_html=True)
-                        else:
-                            st.success("Account created. Sign in above.")
+            with st.form("sign_in", border=False):
+                email = st.text_input("Email", placeholder="you@preferredsquare.com")
+                name = st.text_input("Full name",
+                                     placeholder="e.g. Aditya Bhuttani") if first_run else ""
+                password = st.text_input(
+                    "Password", type="password",
+                    help=f"At least {MIN_PASSWORD_LENGTH} characters. A short "
+                         "phrase is stronger than a short password."
+                    if first_run else None)
+                submitted = st.form_submit_button(
+                    "Create account" if first_run else "Sign in",
+                    type="primary", use_container_width=True)
+
+            if submitted:
+                try:
+                    signed_in = (create_user(email, name, password) if first_run
+                                else authenticate(email, password))
+                except AuthError as exc:
+                    st.markdown(brand.note("Could not sign in", str(exc), "bad"),
+                                unsafe_allow_html=True)
+
+            if not first_run:
+                with st.expander("Add another analyst"):
+                    st.caption("Anyone with access to this machine can register. "
+                               "For firmwide use this is replaced by Microsoft "
+                               "Entra ID single sign-on.")
+                    with st.form("register", border=False):
+                        r_email = st.text_input("Email", key="r_email")
+                        r_name = st.text_input("Full name", key="r_name")
+                        r_pass = st.text_input("Password", type="password",
+                                               key="r_pass")
+                        if st.form_submit_button("Create account",
+                                                 use_container_width=True):
+                            try:
+                                create_user(r_email, r_name, r_pass)
+                            except AuthError as exc:
+                                st.markdown(brand.note("Could not create", str(exc),
+                                                       "bad"), unsafe_allow_html=True)
+                            else:
+                                st.success("Account created. Sign in above.")
+
+        if signed_in is not None:
+            gate.empty()
+            _remember(signed_in, start_session(signed_in))
+            st.rerun()
 
 
 # A refresh starts a new Streamlit session, so session_state is empty. The
 # token in the URL is what carries the sign-in across that boundary; it is
 # validated against the server-side record on every load, so revoking a session
 # takes effect immediately rather than whenever the browser next asks.
+_seed_admin_account()
+
 if "user" not in st.session_state:
     restored = resume_session(st.query_params.get(SESSION_PARAM))
     if restored is not None:

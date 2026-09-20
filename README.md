@@ -547,6 +547,15 @@ rather than trusting permission bits, and `BENCHMARK_PULSE_DATA` overrides it.
 That is why `make_demo_book.py` must be run before the first launch — the
 sample is generated, not shipped.
 
+**On Streamlit Community Cloud the account file does not survive a redeploy.**
+`data/users.json` is git-ignored and lives on the app's own ephemeral disk, so
+a restart forgets every account and shows "create the first account" again.
+Set `ADMIN_EMAIL`, `ADMIN_NAME` and `ADMIN_PASSWORD` in the app's Streamlit
+secrets (Settings -> Secrets in the Cloud dashboard) and that account is
+recreated automatically on startup whenever none exists, so sign-in keeps
+working across redeploys. Locally, the equivalent environment variables
+(`BENCHMARK_PULSE_ADMIN_EMAIL`, `_ADMIN_NAME`, `_ADMIN_PASSWORD`) do the same.
+
 **Offline mode** is in the sidebar. Turn it on before presenting and the app
 uses only cached data, so a dropped connection cannot break a demo. Load the
 app once on the network first to warm the cache.

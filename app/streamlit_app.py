@@ -764,25 +764,59 @@ if view == "My investments":
         )
 
         st.write("")
+        dark = st.session_state.dark
+        surface = brand.DARK_SURFACE if dark else brand.CANVAS_ALT
+        # The full universe each breakdown draws from, in a fixed order -- not
+        # the sectors or markets in *this* book. Colour comes from a name's
+        # position here, so filtering the holdings table can shrink the pie
+        # without repainting the slices that remain.
+        BREAKDOWNS = (
+            ("Weight by sector", lambda h: h.sector, sectors.CANONICAL,
+             lambda g: g),
+            ("Weight by market", lambda h: h.country, list(COUNTRY_NAMES),
+             country_name),
+        )
         split = st.columns(2)
-        for col, (title, frame) in zip(split, (
-            ("Weight by sector", pd.DataFrame(
-                [{"g": h.sector, "v": h.value_base} for h in shown])),
-            ("Weight by market", pd.DataFrame(
-                [{"g": h.country, "v": h.value_base} for h in shown])),
-        )):
-            grouped = frame.groupby("g")["v"].sum().sort_values(ascending=True)
-            fig = go.Figure(go.Bar(
-                x=grouped.values, y=grouped.index, orientation="h",
-                marker_color=brand.TEAL,
-                hovertemplate="%{y}: %{x:,.0f}<extra></extra>",
-            ))
-            fig.update_layout(**brand.plotly_layout(st.session_state.dark),
-                              height=26 * len(grouped) + 70, showlegend=False,
-                              xaxis_title=f"Market value ({analysis.reporting_currency})")
-            fig.update_xaxes(gridcolor=brand.grid_colour(st.session_state.dark))
-            fig.update_yaxes(gridcolor="rgba(0,0,0,0)")
+        for col, (title, key, universe, label_for) in zip(split, BREAKDOWNS):
+            frame = pd.DataFrame([{"g": key(h), "v": h.value_base} for h in shown])
+            grouped = frame.groupby("g")["v"].sum().sort_values(ascending=False)
+            total = grouped.sum()
             col.markdown(brand.chart_label(title), unsafe_allow_html=True)
+            if grouped.empty or not total:
+                col.caption("Nothing to show for the current selection.")
+                continue
+            colors = [brand.categorical_slot(g, universe, dark) for g in grouped.index]
+            # A slice under 8% of the book has no room for a percentage without
+            # overlapping its neighbours -- the legend and hover carry it instead.
+            slice_text = [f"{v / total:.0%}" if v / total >= 0.08 else ""
+                          for v in grouped.values]
+            fig = go.Figure(go.Pie(
+                labels=[label_for(g) for g in grouped.index],
+                values=grouped.values,
+                hole=0.58,
+                sort=False,
+                marker=dict(colors=colors, line=dict(color=surface, width=2)),
+                text=slice_text,
+                textinfo="text",
+                textposition="inside",
+                insidetextorientation="radial",
+                textfont=dict(color="#FFFFFF", size=11),
+                hovertemplate="%{label}: %{value:,.0f} (%{percent})<extra></extra>",
+            ))
+            fig.update_layout(
+                **brand.plotly_layout(dark),
+                height=300,
+                showlegend=True,
+                legend=dict(orientation="v", x=1.03, y=0.5, yanchor="middle",
+                           font=dict(size=10)),
+                annotations=[dict(
+                    text=f"{money(total)}<br><span style='font-size:9px;"
+                         f"letter-spacing:.08em;text-transform:uppercase;'>"
+                         f"total</span>",
+                    x=0.5, y=0.5, showarrow=False, align="center",
+                    font=dict(size=15, color=brand.DARK_TEXT if dark else brand.INK),
+                )],
+            )
             col.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------------- mandate benchmark --

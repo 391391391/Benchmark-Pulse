@@ -111,7 +111,7 @@ by the index's own growth. `benchmark_irr` is derived from the identity
 Verified independently: simulating "buy ACWI with the same 11 cashflows on the
 same dates" gives 17.6992% against the tool's 17.6897% — **0.95 bp apart**.
 
-**Used on:** the KPI strip (Portfolio XIRR, Mandate, Alpha vs mandate), the
+**Used on:** the KPI strip (Portfolio XIRR, Mandate, Alpha on benchmark), the
 Portfolio vs mandate verdict card, the win rate.
 
 ### Trend score — time-weighted, fixed windows

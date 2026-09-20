@@ -661,7 +661,7 @@ st.markdown(
          "note": (f"{mandate_index(portfolio)}{DOT}"
                   f"{fmt_pct(portfolio.benchmark_irr)} on the same cashflows")
                  if portfolio else ""},
-        {"label": "Alpha vs mandate",
+        {"label": "Alpha on benchmark",
          "value": fmt_pct(portfolio.direct_alpha) if portfolio else "n/a",
          "note": "a year",
          "tone": ("up" if portfolio and portfolio.beat_mandate else "down")},

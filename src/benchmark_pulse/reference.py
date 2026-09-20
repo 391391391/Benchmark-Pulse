@@ -93,8 +93,8 @@ MEASURE_NOTES: dict[str, str] = {
                     "from the holding's own cashflows re-based to the "
                     "benchmark's growth, so it is comparable across holdings.",
     "Alpha vs sector": "Annualised return above the holding's sector index.",
-    "Alpha vs mandate": "Annualised return of the whole portfolio above the "
-                        "benchmark implied by its mandate.",
+    "Alpha on benchmark": "Annualised return of the whole portfolio above the "
+                          "benchmark implied by its mandate.",
     "KS-PME": "Kaplan-Schoar Public Market Equivalent. Above 1.00 means the "
               "holding beat what the same money would have earned in the "
               "benchmark over the same dates.",

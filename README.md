@@ -280,8 +280,7 @@ Worked examples from the live feed:
 
 That last row is the point: an unrecognised company returns no sector rather
 than a plausible one, because inventing a sector silently picks a benchmark.
-Every answer is cached, editable in the grid, and listed with its source under
-**Data sources**.
+Every answer is cached and editable in the grid.
 
 When nothing can place a company, **Manage holdings** says so rather than leaving
 a blank cell. Each holding without a sector is listed with what happened to it —

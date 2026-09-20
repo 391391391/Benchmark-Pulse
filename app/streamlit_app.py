@@ -69,6 +69,12 @@ DOT = "&nbsp;&middot;&nbsp;"
 
 SEVERITY_TONE = {"material": "bad", "warning": "warn", "info": ""}
 
+#: The product's own first-class markets, in a fixed order -- not the much
+#: longer general country list. Shared by every market donut, so a country's
+#: colour is the same wherever its weight is broken out.
+MARKET_UNIVERSE = list(dict.fromkeys(
+    b.country for b in MARKETS.values() if b.country))
+
 st.set_page_config(page_title="Benchmark Pulse | Preferred Square",
                    page_icon="assets/favicon.png", layout="wide")
 
@@ -507,7 +513,7 @@ record = by_id[st.session_state.portfolio_id]
 st.query_params[BOOK_PARAM] = record.id
 
 VIEWS = ["Portfolio overview", "Portfolio vs mandate", "Winners and laggards",
-         "Holding analysis", "News", "Data sources", "Manage holdings",
+         "Holding analysis", "News", "Manage holdings",
          "Import portfolio"]
 
 st.sidebar.markdown('<div class="ps-rail-label">Views</div>',
@@ -778,16 +784,11 @@ if view == "Portfolio overview":
         # The full universe each breakdown draws from, in a fixed order -- not
         # the sectors or markets in *this* book. Colour comes from a name's
         # position here, so filtering the holdings table can shrink the pie
-        # without repainting the slices that remain. Markets are the product's
-        # own first-class markets (each with a dedicated home-market
-        # benchmark), not the much longer general country list -- with only
-        # four colours available, US/IN/SA/NL is what actually gets one each.
-        market_universe = list(dict.fromkeys(
-            b.country for b in MARKETS.values() if b.country))
+        # without repainting the slices that remain.
         BREAKDOWNS = (
             ("Weight by sector", lambda h: h.sector, sectors.CANONICAL,
              lambda g: g),
-            ("Weight by market", lambda h: h.country, market_universe,
+            ("Weight by market", lambda h: h.country, MARKET_UNIVERSE,
              country_name),
         )
         split = st.columns(2)
@@ -1124,19 +1125,45 @@ elif view == "Portfolio vs mandate":
 
         st.write("")
         by_country = exposure["by_country"]
-        fig = go.Figure(go.Bar(
-            x=[w * 100 for w in by_country.values()],
-            y=[country_name(c) for c in by_country],
-            orientation="h", marker_color=brand.TEAL,
-            hovertemplate="%{y}: %{x:.1f}% of capital<extra></extra>",
+        dark = st.session_state.dark
+        # Same donut treatment as the breakdowns on Portfolio overview, and
+        # the same coloured identity per market -- a country's colour does
+        # not change depending on which page or which of these two charts is
+        # showing it.
+        outline = "#FFFFFF" if dark else brand.NAVY_DEEP
+        colors = [brand.categorical_slot(c, MARKET_UNIVERSE, dark)
+                  for c in by_country]
+        slice_text = [f"{w:.0%}" if w >= 0.08 else "" for w in by_country.values()]
+        fig = go.Figure(go.Pie(
+            labels=[country_name(c) for c in by_country],
+            values=list(by_country.values()),
+            hole=0.58,
+            sort=False,
+            marker=dict(colors=colors, line=dict(color=outline, width=2)),
+            text=slice_text,
+            textinfo="text",
+            textposition="inside",
+            insidetextorientation="radial",
+            textfont=dict(color=[brand.slice_text_color(c) for c in colors],
+                          size=11),
+            hovertemplate="%{label}: %{value:.1%} of capital<extra></extra>",
         ))
-        fig.update_layout(**brand.plotly_layout(st.session_state.dark),
-                          height=30 * len(by_country) + 90,
-                          xaxis_title="% of capital committed",
-                          showlegend=False)
-        fig.update_xaxes(gridcolor=brand.grid_colour(st.session_state.dark))
-        fig.update_yaxes(gridcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(
+            **brand.plotly_layout(dark),
+            height=320,
+            showlegend=True,
+            legend=dict(orientation="v", x=1.03, y=0.5, yanchor="middle",
+                       font=dict(size=10)),
+            annotations=[dict(
+                text=f"{money(analysis.total_capital)}<br><span "
+                     f"style='font-size:10px;letter-spacing:.01em;'>"
+                     f"Capital</span>",
+                x=0.5, y=0.5, showarrow=False, align="center",
+                font=dict(size=15, color=brand.DARK_TEXT if dark else brand.INK),
+            )],
+        )
+        chart_col, _ = st.columns([1, 1])
+        chart_col.plotly_chart(fig, use_container_width=True)
 
         for note in portfolio.notes:
             st.markdown(brand.card("Note", note, "warn"), unsafe_allow_html=True)
@@ -1645,118 +1672,6 @@ elif view == "Holding analysis":
             st.error(holding.error)
 
 # ---------------------------------------------------------------- caveats --
-
-# ------------------------------------------------------------ data sources --
-
-elif view == "Data sources":
-    section("Data sources")
-
-    prov = analysis.provenance
-    fx = {k: p for k, p in prov.items() if "/" in k}
-    prices = {k: p for k, p in prov.items() if "/" not in k}
-    covers = [f"{p.first} to {p.last}" for p in prices.values() if p.first]
-
-    st.markdown(
-        brand.table(
-            [("Data", "ps-name"), ("Source", ""), ("Basis", ""),
-             ("Series", "ps-num"), ("History", "")],
-            [
-                ["Exchange rates",
-                 "European Central Bank reference rates",
-                 brand.pill("official"),
-                 str(len(fx)),
-                 max((f"{p.first} to {p.last}" for p in fx.values() if p.first),
-                     default=DASH)],
-                ["Share prices and index levels",
-                 "Yahoo Finance",
-                 brand.pill("third party", "warn"),
-                 str(len(prices)),
-                 f"{min(covers).split(' to ')[0]} to "
-                 f"{max(covers).split(' to ')[1]}" if covers else DASH],
-            ],
-        ),
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        brand.note(
-            "Why these",
-            "Currency comes from the <b>European Central Bank</b> &mdash; the "
-            "institution that publishes the reference rate, so it is a primary "
-            "source rather than a redistributor. Prices come from Yahoo "
-            "Finance, which is the only free feed covering US, Indian and Saudi "
-            "listings together; that is stated plainly rather than implied to "
-            "be official. Prices are split- and dividend-adjusted, so holdings "
-            "and benchmarks are both measured on a total-return basis.",
-        ),
-        unsafe_allow_html=True,
-    )
-
-    for n in analysis.source_notes:
-        st.markdown(brand.note("Note", n, "warn"), unsafe_allow_html=True)
-
-    # -- what the loader could not use ------------------------------------
-    #
-    # A row the reader rejected is the one thing on this page that changes the
-    # answer rather than explaining it: a holding that silently failed to load
-    # is missing from every figure in the tool. It belongs beside the sources
-    # because it is a statement about the inputs.
-
-    if analysis.load_report.skipped or analysis.load_report.warnings:
-        st.markdown(brand.section(
-            "Rows excluded from analysis",
-            "Anything listed here is absent from every figure in the tool."),
-            unsafe_allow_html=True)
-        for s in analysis.load_report.skipped:
-            st.error(s)
-        for w in analysis.load_report.warnings:
-            st.warning(w)
-    else:
-        st.markdown(
-            f'<div style="font-size:.76rem;color:{brand.MUTED};'
-            f'margin-top:.6rem;">Every row in the workbook was read and '
-            f'priced &mdash; {len(analysis.holdings)} holdings, none skipped.'
-            f'</div>', unsafe_allow_html=True)
-
-    # -- where each sector came from -------------------------------------
-    #
-    # The sector is not decoration: it picks the holding's benchmark. So it
-    # belongs on the page that says where every input came from, holding by
-    # holding, rather than being folded into a single line about Yahoo.
-
-    held = {h.asset_id.upper() for h in analysis.holdings}
-    looked_up = {t: g for t, g in sectors.cached().items() if t in held}
-    if looked_up:
-        st.markdown(brand.section(
-            "Sector attribution",
-            "The sector decides which index a holding is measured against, so "
-            "it is traced like any other input."), unsafe_allow_html=True)
-        st.markdown(
-            brand.table(
-                [("Holding", "ps-name"), ("Ticker", ""), ("Sector", ""),
-                 ("Identified by", ""), ("Basis", "ps-tag")],
-                [[escape((analysis.by_id(t).name if analysis.by_id(t)
-                          else t)),
-                  f'<span class="ps-muted">{escape(t)}</span>',
-                  escape(g.sector),
-                  escape(g.attribution),
-                  brand.pill("third party", "warn") if g.source == "yahoo"
-                  else brand.pill("model", "bad")]
-                 for t, g in sorted(looked_up.items())]),
-            unsafe_allow_html=True)
-        st.markdown(
-            brand.note(
-                "Two sources, in order",
-                "<b>Yahoo Finance</b> is asked first, because it is the same "
-                "feed the prices come from and the sector then agrees with the "
-                "price about which company this is. Anything it holds no "
-                "sector for is put to the <b>model</b>, which is the only "
-                "input in this tool that carries no citation &mdash; so it is "
-                "marked wherever it appears and it never overrides a source "
-                "that answered. A sector stated in the client's own file "
-                "outranks both and is never looked up at all. Every one of "
-                "them is an ordinary editable value under Manage holdings."),
-            unsafe_allow_html=True)
 
 # -------------------------------------------------------------------- news --
 

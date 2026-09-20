@@ -219,13 +219,18 @@ what they wrote, and the Modified Dietz denominator follows from it.
 | Winners and laggards | trend only | split on weighted alpha, attribution by sector/market |
 | Holding analysis | live quote + trend | price, day move, position value, windows, chart, cashflows (was "Holding detail") |
 | News | — | Key highlights, six categories, filings in an expander |
-| Data sources | — | provenance, sector attribution, rows excluded from analysis |
 | Manage holdings | — | editable grid, record a trade, fill gaps, revert (was "Edit holdings") |
 | Import portfolio | — | upload, registry, remove (was "Load portfolio") |
 
 Renamed 21 Sep for a more professional-reading nav — the `view ==` checks in
 `streamlit_app.py` use these new labels; grep for the old ones if a stale
 reference turns up.
+
+**Data sources removed 21 Sep** (was: provenance table, sector attribution,
+rows excluded from analysis) at the owner's request -- `analysis.provenance`,
+`analysis.source_notes` and the sector-attribution path in `sectors.py` are
+still computed and cached, just no longer surfaced on any screen. Restoring
+the view is a UI-only job if this is asked for again.
 
 **Removed deliberately, do not restore without asking:** an interactive
 dashboard ("not looking good"), Commentary (the numeric-guard demo), Fairness

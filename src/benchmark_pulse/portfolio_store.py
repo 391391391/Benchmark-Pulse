@@ -52,6 +52,10 @@ class PortfolioRecord:
     warnings: list[str] | None = None
     used_model: bool = False
     is_demo: bool = False
+    #: The account that uploaded this book, by email. Blank on a record
+    #: written before ownership existed -- treated as the admin's, since every
+    #: upload on record so far was made while testing, by the admin account.
+    owner: str = ""
     #: The working copy, once someone has edited the holdings in the app. Not
     #: stored in registry.json -- it is applied from EDITS at load.
     edited_path: str | None = None
@@ -161,20 +165,50 @@ def _apply_edits(records: list[PortfolioRecord]) -> list[PortfolioRecord]:
     return records
 
 
-def load_registry() -> list[PortfolioRecord]:
-    """Every known portfolio, the bundled sample first."""
-    records = [_demo_record()]
-    if REGISTRY.exists():
+def _load_all() -> list[PortfolioRecord]:
+    """Every uploaded portfolio, from every account -- unfiltered.
+
+    Only for code that has to rewrite the registry (``add``, ``remove``,
+    ``rename``): filtering by owner here and saving the result back would
+    silently delete every other account's portfolios. The bundled sample is
+    never included -- it isn't a registry entry, and a caller that wants it
+    asks ``load_registry`` for it explicitly.
+    """
+    if not REGISTRY.exists():
+        return []
+    try:
+        raw = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    records = []
+    for item in raw:
+        item.pop("edited_path", None)
         try:
-            raw = json.loads(REGISTRY.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return _apply_edits(records)
-        for item in raw:
-            item.pop("edited_path", None)
-            try:
-                record = PortfolioRecord(**item)
-            except TypeError:
-                continue          # a record from an older shape; skip it
+            records.append(PortfolioRecord(**item))
+        except TypeError:
+            continue              # a record from an older shape; skip it
+    return records
+
+
+def load_registry(owner: str, is_admin: bool = False) -> list[PortfolioRecord]:
+    """The portfolios one signed-in account is allowed to see.
+
+    An account sees only what it uploaded -- a client's holdings are not
+    another analyst's to browse. The bundled sample is the one exception, and
+    it is the admin's alone: everyone else's list starts empty, which is what
+    prompts a fresh account straight to importing its own first book instead
+    of quietly showing someone else's.
+    """
+    owner_l = owner.strip().lower()
+    records = [_demo_record()] if is_admin else []
+    for record in _load_all():
+        record_owner = (record.owner or "").strip().lower()
+        # A blank owner predates this field -- every such upload on record was
+        # made while testing, by the admin account, so it is treated as theirs
+        # rather than made invisible to everyone by a field that did not exist
+        # yet when it was written.
+        mine = record_owner == owner_l or (is_admin and not record_owner)
+        if mine:
             records.append(record)
     # The sample stays in the list whether or not its file is present, so the
     # picker is never empty and the app can say what is missing instead of
@@ -198,12 +232,17 @@ def _save_registry(records: list[PortfolioRecord]) -> None:
 
 
 def get(portfolio_id: str) -> PortfolioRecord | None:
-    return next((r for r in load_registry() if r.id == portfolio_id), None)
+    if portfolio_id == DEMO_ID:
+        return _demo_record()
+    return next((r for r in _load_all() if r.id == portfolio_id), None)
 
 
 def add(uploaded_name: str, data: bytes, display_name: str | None = None,
-        client=None) -> PortfolioRecord:
+        client=None, owner: str = "") -> PortfolioRecord:
     """Store an uploaded file and convert it to the canonical workbook.
+
+    ``owner`` is the uploading account's email. It is what keeps one
+    account's book out of another's portfolio picker -- see `load_registry`.
 
     Raises IngestError if the file cannot be read, so the caller can show the
     reason rather than registering a portfolio that will fail on every open.
@@ -237,9 +276,10 @@ def add(uploaded_name: str, data: bytes, display_name: str | None = None,
         rows=max(result.total_rows, 0),
         warnings=result.warnings,
         used_model=result.used_model,
+        owner=owner.strip().lower(),
     )
 
-    records = [r for r in load_registry() if r.id != record_id]
+    records = [r for r in _load_all() if r.id != record_id]
     records.append(record)
     _save_registry(records)
     return record
@@ -260,14 +300,21 @@ def save_holdings(record: PortfolioRecord, frame) -> Path:
     return out
 
 
-def remove(portfolio_id: str) -> bool:
-    """Forget a portfolio and delete the files stored for it."""
+def remove(portfolio_id: str, owner: str) -> bool:
+    """Forget a portfolio and delete the files stored for it.
+
+    ``owner`` must match the record's own -- checked here as well as by the
+    UI only offering an account its own portfolios to remove, so a crafted
+    ID can't delete a book that belongs to someone else.
+    """
     if portfolio_id == DEMO_ID:
         return False
-    records = load_registry()
-    keep = [r for r in records if r.id != portfolio_id]
-    if len(keep) == len(records):
+    owner_l = owner.strip().lower()
+    records = _load_all()
+    target = next((r for r in records if r.id == portfolio_id), None)
+    if target is None or (target.owner or "").strip().lower() != owner_l:
         return False
+    keep = [r for r in records if r.id != portfolio_id]
     edits = _load_edits()
     if edits.pop(portfolio_id, None) is not None:
         _save_edits(edits)
@@ -276,10 +323,12 @@ def remove(portfolio_id: str) -> bool:
     return True
 
 
-def rename(portfolio_id: str, name: str) -> bool:
-    records = load_registry()
+def rename(portfolio_id: str, name: str, owner: str) -> bool:
+    owner_l = owner.strip().lower()
+    records = _load_all()
     for record in records:
-        if record.id == portfolio_id and not record.is_demo:
+        if (record.id == portfolio_id and not record.is_demo
+                and (record.owner or "").strip().lower() == owner_l):
             record.name = name.strip() or record.name
             _save_registry(records)
             return True

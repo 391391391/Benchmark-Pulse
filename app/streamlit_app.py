@@ -298,26 +298,6 @@ def sign_in_screen() -> None:
                     st.markdown(brand.note("Could not sign in", str(exc), "bad"),
                                 unsafe_allow_html=True)
 
-            if not first_run:
-                with st.expander("Add another analyst"):
-                    st.caption("Anyone with access to this machine can register. "
-                               "For firmwide use this is replaced by Microsoft "
-                               "Entra ID single sign-on.")
-                    with st.form("register", border=False):
-                        r_email = st.text_input("Email", key="r_email")
-                        r_name = st.text_input("Full name", key="r_name")
-                        r_pass = st.text_input("Password", type="password",
-                                               key="r_pass")
-                        if st.form_submit_button("Create account",
-                                                 use_container_width=True):
-                            try:
-                                create_user(r_email, r_name, r_pass)
-                            except AuthError as exc:
-                                st.markdown(brand.note("Could not create", str(exc),
-                                                       "bad"), unsafe_allow_html=True)
-                            else:
-                                st.success("Account created. Sign in above.")
-
         if signed_in is not None:
             gate.empty()
             _remember(signed_in, start_session(signed_in))
@@ -467,6 +447,112 @@ def benchmark_picker(decision, choices: dict, key: str) -> None:
     st.rerun()
 
 
+def _upload_portfolio_form(owner: str) -> None:
+    """The upload widget and its ingestion pipeline: read the file, convert
+    it, fill in any missing sector or market, and open it.
+
+    Shared by the normal Import portfolio view and the first-run screen a
+    freshly created account lands on, so the two paths cannot drift apart --
+    a fix to one is a fix to both.
+    """
+    upload = st.file_uploader(
+        "Portfolio file", type=[ext.lstrip(".") for ext in SUPPORTED],
+        help="Excel (.xlsx, .xlsm, .xls), CSV, PDF or PowerPoint (.pptx).",
+    )
+    name = st.text_input("Portfolio name", value="",
+                         placeholder="e.g. Al Faisal Global Equity - Q3 2026")
+
+    if upload is not None and st.button("Read and analyse", type="primary"):
+        with st.spinner("Reading the file..."):
+            try:
+                new_record = portfolio_store.add(
+                    upload.name, upload.getvalue(), name.strip() or None,
+                    owner=owner)
+            except IngestError as exc:
+                new_record = None
+                st.markdown(brand.card("Could not read this file", str(exc), "bad"),
+                            unsafe_allow_html=True)
+            except Exception as exc:  # noqa: BLE001
+                new_record = None
+                st.markdown(brand.card("Unexpected problem", str(exc), "bad"),
+                            unsafe_allow_html=True)
+        if new_record is not None:
+            for w in (new_record.warnings or []):
+                st.markdown(brand.note("Transcription note", w, "warn"),
+                            unsafe_allow_html=True)
+
+            # Statements routinely arrive without a sector column, and every
+            # holding in one is then benchmarked against its market instead of
+            # its industry. Filled here, once, rather than left for the analyst
+            # to notice on a later screen.
+            found: list[tuple[str, str, str, str]] = []
+            lost: dict[tuple[str, str], str] = {}
+            try:
+                grid = holdings_edit.read_holdings(new_record.workbook)
+                if (holdings_edit.missing_markets(grid)
+                        or holdings_edit.missing_sectors(grid)):
+                    with st.spinner("Identifying markets and sectors..."):
+                        grid, by_market, no_market = holdings_edit.fill_markets(
+                            grid, sectors.identify)
+                        grid, by_sector, no_sector = holdings_edit.fill_sectors(
+                            grid, sectors.identify)
+                    found = ([(t, v, how, "Country") for t, v, how in by_market]
+                             + [(t, v, how, "Sector") for t, v, how in by_sector])
+                    lost = {
+                        **{(t, "Country"): why for t, _n, why in no_market},
+                        **{(t, "Sector"): why for t, _n, why in no_sector},
+                    }
+                    if found:
+                        portfolio_store.save_holdings(new_record, grid)
+            except Exception as exc:  # noqa: BLE001 - a book still loads
+                st.markdown(
+                    brand.note("Markets and sectors not filled in",
+                               escape(str(exc)), "warn"),
+                    unsafe_allow_html=True)
+            if found:
+                st.markdown(
+                    brand.note(
+                        f"{len(found)} value{'s' if len(found) != 1 else ''} "
+                        "identified",
+                        "<br>".join(
+                            f"<b>{escape(t)}</b> "
+                            f"{holdings_edit.GAP_FIELDS[col]} is "
+                            f"{escape(country_name(v) if col == 'Country' else v)}"
+                            f" &mdash; {how}"
+                            for t, v, how, col in found)
+                        + "<br><br>Each one is an ordinary value in the "
+                          "holdings table and can be typed over."),
+                    unsafe_allow_html=True)
+            if lost:
+                # Carried to the editor, so the holding arrives there already
+                # marked "not found" with the reason, rather than as a blank
+                # nobody can tell from an unasked one.
+                st.session_state.sector_misses = lost
+                st.markdown(
+                    brand.note(
+                        f"{len(lost)} value{'s' if len(lost) != 1 else ''} "
+                        "not found",
+                        "<br>".join(
+                            f"<b>{escape(t)}</b> "
+                            f"{holdings_edit.GAP_FIELDS[col]} "
+                            f"&mdash; {escape(why)}"
+                            for (t, col), why in lost.items())
+                        + "<br><br>Set them by hand under <b>Manage holdings</b>. "
+                          "Until then they are measured against a broader "
+                          "index than they should be.", "warn"),
+                    unsafe_allow_html=True)
+
+            st.cache_resource.clear()
+            st.session_state.load_stamp = time.time()
+            # Open what was just uploaded. Anything else means reading a
+            # success message about a book the screens are not showing.
+            st.session_state.portfolio_id = new_record.id
+            st.query_params[BOOK_PARAM] = new_record.id
+            st.success(f"Loaded **{new_record.name}** "
+                       f"({new_record.rows} rows from {new_record.source_format}).")
+            st.rerun()
+
+
 # ---------------------------------------------------------------- sidebar --
 
 logo = brand.logo_data_uri()
@@ -488,7 +574,38 @@ st.sidebar.markdown(
 # portfolio exists cannot be found by someone looking for where to switch, and
 # an analyst has no way to tell whether the tool holds one book or six. Standing
 # there naming the open book, it answers both questions at once.
-records = portfolio_store.load_registry()
+#
+# Scoped to the signed-in account: a book uploaded under one sign-in is not
+# another analyst's to browse. Only the admin's list carries the bundled
+# sample, so anyone else created by the admin starts from nothing rather than
+# from someone else's holdings.
+records = portfolio_store.load_registry(user.email, is_admin=(user.role == "admin"))
+
+if not records:
+    st.markdown(brand.title_bar(f"Welcome, {user.name}", "No portfolio yet"),
+                unsafe_allow_html=True)
+    st.markdown(brand.section(
+        "Import your first portfolio",
+        "Nothing here is shared between accounts. What you upload is visible "
+        "only under your own sign-in -- not to any other analyst, and not "
+        "even to the admin who created your account."), unsafe_allow_html=True)
+    _upload_portfolio_form(user.email)
+
+    st.sidebar.markdown(
+        '<div class="ps-rail-label">Signed in</div>'
+        f'<div class="ps-sb-user"><div class="av">{user.initials}</div>'
+        f'<div class="who"><div class="nm">{user.name}</div>'
+        f'<div class="rl">{user.role.capitalize()}</div></div></div>',
+        unsafe_allow_html=True,
+    )
+    if st.sidebar.button("Sign out", use_container_width=True):
+        end_session(st.session_state.get("session_token"))
+        for key in ("user", "session_token"):
+            st.session_state.pop(key, None)
+        st.query_params.pop(SESSION_PARAM, None)
+        st.rerun()
+    st.stop()
+
 by_id = {r.id: r for r in records}
 
 wanted = st.session_state.get("portfolio_id") or st.query_params.get(BOOK_PARAM)
@@ -595,6 +712,32 @@ st.sidebar.markdown(
     f'<div class="rl">{user.role.capitalize()}</div></div></div>',
     unsafe_allow_html=True,
 )
+
+# Registration used to be self-service from the sign-in screen -- anyone with
+# the URL could create their own account. Only the admin creates one now, so
+# who has access to client portfolios is a decision someone makes, not a form
+# anyone can fill in.
+if user.role == "admin":
+    with st.sidebar.expander("Add an analyst"):
+        st.caption("Their portfolios start empty and stay private to their "
+                   "own sign-in -- not visible here, even to you.")
+        with st.form("add_analyst", border=False):
+            new_email = st.text_input("Email", key="new_analyst_email")
+            new_name = st.text_input("Full name", key="new_analyst_name")
+            new_pass = st.text_input(
+                "Password", type="password", key="new_analyst_pass",
+                help=f"At least {MIN_PASSWORD_LENGTH} characters. Share it "
+                     "with them directly -- there is no reset flow yet.")
+            if st.form_submit_button("Create account",
+                                     use_container_width=True):
+                try:
+                    new_user = create_user(new_email, new_name, new_pass,
+                                           role="analyst")
+                except AuthError as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f"Account created for {new_user.email}.")
+
 if st.sidebar.button("Sign out", use_container_width=True):
     # Revoke server-side first: the token in the URL must stop working, not
     # merely be forgotten by this tab.
@@ -2290,101 +2433,7 @@ elif view == "Import portfolio":
             "transcribed onto the same schema. An uploaded book is added to "
             "the list and opened; switch between books in the rail.")
 
-    upload = st.file_uploader(
-        "Portfolio file", type=[ext.lstrip(".") for ext in SUPPORTED],
-        help="Excel (.xlsx, .xlsm, .xls), CSV, PDF or PowerPoint (.pptx).",
-    )
-    name = st.text_input("Portfolio name", value="",
-                         placeholder="e.g. Al Faisal Global Equity - Q3 2026")
-
-    if upload is not None and st.button("Read and analyse", type="primary"):
-        with st.spinner("Reading the file..."):
-            try:
-                new_record = portfolio_store.add(
-                    upload.name, upload.getvalue(), name.strip() or None)
-            except IngestError as exc:
-                new_record = None
-                st.markdown(brand.card("Could not read this file", str(exc), "bad"),
-                            unsafe_allow_html=True)
-            except Exception as exc:  # noqa: BLE001
-                new_record = None
-                st.markdown(brand.card("Unexpected problem", str(exc), "bad"),
-                            unsafe_allow_html=True)
-        if new_record is not None:
-            for w in (new_record.warnings or []):
-                st.markdown(brand.note("Transcription note", w, "warn"),
-                            unsafe_allow_html=True)
-
-            # Statements routinely arrive without a sector column, and every
-            # holding in one is then benchmarked against its market instead of
-            # its industry. Filled here, once, rather than left for the analyst
-            # to notice on a later screen.
-            found: list[tuple[str, str, str, str]] = []
-            lost: dict[tuple[str, str], str] = {}
-            try:
-                grid = holdings_edit.read_holdings(new_record.workbook)
-                if (holdings_edit.missing_markets(grid)
-                        or holdings_edit.missing_sectors(grid)):
-                    with st.spinner("Identifying markets and sectors..."):
-                        grid, by_market, no_market = holdings_edit.fill_markets(
-                            grid, sectors.identify)
-                        grid, by_sector, no_sector = holdings_edit.fill_sectors(
-                            grid, sectors.identify)
-                    found = ([(t, v, how, "Country") for t, v, how in by_market]
-                             + [(t, v, how, "Sector") for t, v, how in by_sector])
-                    lost = {
-                        **{(t, "Country"): why for t, _n, why in no_market},
-                        **{(t, "Sector"): why for t, _n, why in no_sector},
-                    }
-                    if found:
-                        portfolio_store.save_holdings(new_record, grid)
-            except Exception as exc:  # noqa: BLE001 - a book still loads
-                st.markdown(
-                    brand.note("Markets and sectors not filled in",
-                               escape(str(exc)), "warn"),
-                    unsafe_allow_html=True)
-            if found:
-                st.markdown(
-                    brand.note(
-                        f"{len(found)} value{'s' if len(found) != 1 else ''} "
-                        "identified",
-                        "<br>".join(
-                            f"<b>{escape(t)}</b> "
-                            f"{holdings_edit.GAP_FIELDS[col]} is "
-                            f"{escape(country_name(v) if col == 'Country' else v)}"
-                            f" &mdash; {how}"
-                            for t, v, how, col in found)
-                        + "<br><br>Each one is an ordinary value in the "
-                          "holdings table and can be typed over."),
-                    unsafe_allow_html=True)
-            if lost:
-                # Carried to the editor, so the holding arrives there already
-                # marked "not found" with the reason, rather than as a blank
-                # nobody can tell from an unasked one.
-                st.session_state.sector_misses = lost
-                st.markdown(
-                    brand.note(
-                        f"{len(lost)} value{'s' if len(lost) != 1 else ''} "
-                        "not found",
-                        "<br>".join(
-                            f"<b>{escape(t)}</b> "
-                            f"{holdings_edit.GAP_FIELDS[col]} "
-                            f"&mdash; {escape(why)}"
-                            for (t, col), why in lost.items())
-                        + "<br><br>Set them by hand under <b>Manage holdings</b>. "
-                          "Until then they are measured against a broader "
-                          "index than they should be.", "warn"),
-                    unsafe_allow_html=True)
-
-            st.cache_resource.clear()
-            st.session_state.load_stamp = time.time()
-            # Open what was just uploaded. Anything else means reading a
-            # success message about a book the screens are not showing.
-            st.session_state.portfolio_id = new_record.id
-            st.query_params[BOOK_PARAM] = new_record.id
-            st.success(f"Loaded **{new_record.name}** "
-                       f"({new_record.rows} rows from {new_record.source_format}).")
-            st.rerun()
+    _upload_portfolio_form(user.email)
 
     st.markdown(
         brand.note(
@@ -2426,7 +2475,7 @@ elif view == "Import portfolio":
             st.caption("Deletes the uploaded file and the converted workbook. "
                        "Cannot be undone.")
             if st.button("Remove permanently"):
-                if portfolio_store.remove(target):
+                if portfolio_store.remove(target, user.email):
                     st.cache_resource.clear()
                     # Removing the open book would otherwise leave every screen
                     # pointed at a workbook that no longer exists.

@@ -208,6 +208,16 @@ what they wrote, and the Modified Dietz denominator follows from it.
     silently stops matching and the button loses all brand styling — which
     previously produced navy-on-navy invisible buttons.
 
+14. **Portfolios are private to the account that uploaded them (21 Sep).**
+    `portfolio_store.load_registry(owner, is_admin)` filters by the signed-in
+    email; only the admin's list carries the bundled sample, so anyone else
+    the admin creates starts from nothing. A record written before this field
+    existed (blank `owner`) is treated as the admin's rather than made
+    invisible to everyone. `add`/`remove`/`rename` read `_load_all()` — every
+    account's records, unfiltered — before rewriting the registry; the
+    filtered `load_registry` must never be the thing that gets saved back, or
+    saving one account's upload would erase every other account's.
+
 ---
 
 ## 6. The eight views
@@ -278,6 +288,12 @@ one row per holding, matching what custodian statements contain.
 
 ## 8. Security and version control
 
+- **Registration is admin-only (21 Sep).** The public "Add another analyst"
+  expander on the sign-in screen is gone; `create_user` is now only called
+  from an "Add an analyst" expander in the sidebar, gated on
+  `user.role == "admin"`. There is exactly one admin — whoever the first
+  account or `_seed_admin_account()` made one — and every account it creates
+  defaults to `role="analyst"`. No self-service signup path exists any more.
 - **`.env` holds a live Gemini API key.** It is in `.gitignore` and has never
   been committed — verified against the full history, not just the working
   tree. It must never be committed and must be deleted from any copy shared

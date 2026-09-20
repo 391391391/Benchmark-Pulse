@@ -543,7 +543,7 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 .ps-strip .cell + .cell {{ padding-left: 1.1rem; }}
 .ps-strip .k {{
     font-size: .68rem; font-weight: 700; letter-spacing: .01em;
-    color: var(--ps-muted); white-space: nowrap;
+    color: var(--ps-heading); white-space: nowrap;
 }}
 .ps-strip .v {{
     font-family: {FONT_DISPLAY}; font-weight: 800; font-size: 1.28rem;
@@ -565,7 +565,7 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 /* --------------------------------------------------------------- section */
 .ps-section {{
     font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .86rem;
-    letter-spacing: 0; color: var(--ps-muted);
+    letter-spacing: 0; color: var(--ps-heading);
     margin: 1.5rem 0 .5rem 0; padding-bottom: .3rem;
     border-bottom: 1px solid var(--ps-hairline);
 }}
@@ -604,7 +604,7 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
    above it. A real element cannot escape the layout it is in. */
 .ps-chart-label {{
     font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .72rem;
-    letter-spacing: .01em; color: var(--ps-muted);
+    letter-spacing: .01em; color: var(--ps-heading);
     margin: .3rem 0 .15rem 0;
 }}
 .ps-table {{
@@ -614,7 +614,7 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 .ps-table thead th {{
     position: sticky; top: 0; z-index: 2; background: var(--ps-canvas);
     text-align: left; font-weight: 700; font-size: .68rem;
-    letter-spacing: .01em; color: var(--ps-muted);
+    letter-spacing: .01em; color: var(--ps-heading);
     padding: .3rem .7rem .4rem .7rem; white-space: nowrap;
     border-bottom: 1.5px solid var(--ps-heading);
 }}

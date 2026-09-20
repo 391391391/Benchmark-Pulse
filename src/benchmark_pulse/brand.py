@@ -73,21 +73,22 @@ DARK_MUTED = "#8A9BB3"
 # A deliberate exception to "colour carries meaning only" above: a sector or
 # market breakdown has no beat/miss to report, only identity, and teal-only
 # shading of same-size slices is not something a reader can actually tell
-# apart. Eight hues, fixed order, validated for CVD separation and contrast
-# against CANVAS and DARK_SURFACE specifically -- not the generic palette a
-# design system starts from. Slot order is the safety mechanism: it is what
-# was checked, so it must not be reshuffled without re-validating.
+# apart. The firm's own four-colour swatch, used as-is at the owner's request
+# even though two of the four -- the light grey and the pale mint -- read
+# close to identical to each other (normal-vision contrast 4.7, versus the 15
+# a categorical pair needs) and close to invisible against a light surface
+# (contrast ~1.1:1, versus the 3:1 a fill needs). `marker.line` on every slice
+# in `categorical_slot`'s caller carries the weight those two colours can't:
+# a strong outline is what makes a near-white slice read as a shape at all.
 CHART_CATEGORICAL = {
-    "light": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100",
-              "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
-    "dark": ["#3987e5", "#d95926", "#199e70", "#c98500",
-             "#d55181", "#008300", "#9085e9", "#e66767"],
+    "light": ["#44546A", "#E7E6E6", "#D0F7F0", "#29BDAD"],
+    "dark": ["#44546A", "#E7E6E6", "#D0F7F0", "#29BDAD"],
 }
 
-#: Where a category falls outside the eight identities above -- the ninth
-#: sector, the twentieth market. A shared, deliberately unsaturated bucket
-#: rather than a generated ninth hue, which would be indistinguishable from
-#: an existing one under colour-blindness.
+#: Where a category falls outside the four identities above -- the fifth
+#: sector, the fifth market. A shared, deliberately unsaturated bucket rather
+#: than a generated fifth hue, which would be indistinguishable from an
+#: existing one under colour-blindness.
 CHART_OTHER = {"light": "#C7CCD6", "dark": "#3A4A63"}
 
 
@@ -99,7 +100,7 @@ def categorical_slot(key: str, universe: list[str], dark: bool = False) -> str:
     fixed order -- not from the category's rank in the current chart. Rank-based
     colour looks fine until someone filters: the moment a category drops out,
     every colour after it shifts, and a reader who learned "Financials is
-    orange" is misled. A key past the eighth slot, or one ``universe`` does not
+    orange" is misled. A key past the fourth slot, or one ``universe`` does not
     recognise, gets the shared "other" bucket rather than a new hue.
     """
     palette = CHART_CATEGORICAL["dark" if dark else "light"]
@@ -108,6 +109,34 @@ def categorical_slot(key: str, universe: list[str], dark: bool = False) -> str:
     except ValueError:
         i = len(palette)
     return palette[i] if i < len(palette) else CHART_OTHER["dark" if dark else "light"]
+
+
+def _linear_channel(value: float) -> float:
+    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def _relative_luminance(hex_color: str) -> float:
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return (0.2126 * _linear_channel(r) + 0.7152 * _linear_channel(g)
+            + 0.0722 * _linear_channel(b))
+
+
+def _contrast(hex_a: str, hex_b: str) -> float:
+    la, lb = _relative_luminance(hex_a), _relative_luminance(hex_b)
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def slice_text_color(fill_hex: str) -> str:
+    """White or the brand's own ink, whichever actually reads on ``fill_hex``.
+
+    A fixed "always white" label -- the usual choice for a mark's inside text
+    -- goes unreadable on the pale grey and mint slots above (contrast ~1.2:1).
+    Computed per fill rather than assumed, so a future palette swap can't
+    silently reintroduce invisible labels.
+    """
+    return "#FFFFFF" if _contrast(fill_hex, "#FFFFFF") >= _contrast(fill_hex, INK) else INK
 
 
 # -- Typography -------------------------------------------------------------

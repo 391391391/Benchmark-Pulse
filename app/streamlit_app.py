@@ -765,15 +765,25 @@ if view == "My investments":
 
         st.write("")
         dark = st.session_state.dark
-        surface = brand.DARK_SURFACE if dark else brand.CANVAS_ALT
+        # A strong, theme-matched outline rather than a background-coloured
+        # one: with only four brand colours to draw from, two of them (the
+        # light grey and the pale mint) barely register against either
+        # surface on their own. The outline is what makes every slice read as
+        # a shape, on both surfaces, regardless of how pale its fill is.
+        outline = "#FFFFFF" if dark else brand.NAVY_DEEP
         # The full universe each breakdown draws from, in a fixed order -- not
         # the sectors or markets in *this* book. Colour comes from a name's
         # position here, so filtering the holdings table can shrink the pie
-        # without repainting the slices that remain.
+        # without repainting the slices that remain. Markets are the product's
+        # own first-class markets (each with a dedicated home-market
+        # benchmark), not the much longer general country list -- with only
+        # four colours available, US/IN/SA/NL is what actually gets one each.
+        market_universe = list(dict.fromkeys(
+            b.country for b in MARKETS.values() if b.country))
         BREAKDOWNS = (
             ("Weight by sector", lambda h: h.sector, sectors.CANONICAL,
              lambda g: g),
-            ("Weight by market", lambda h: h.country, list(COUNTRY_NAMES),
+            ("Weight by market", lambda h: h.country, market_universe,
              country_name),
         )
         split = st.columns(2)
@@ -795,12 +805,13 @@ if view == "My investments":
                 values=grouped.values,
                 hole=0.58,
                 sort=False,
-                marker=dict(colors=colors, line=dict(color=surface, width=2)),
+                marker=dict(colors=colors, line=dict(color=outline, width=2)),
                 text=slice_text,
                 textinfo="text",
                 textposition="inside",
                 insidetextorientation="radial",
-                textfont=dict(color="#FFFFFF", size=11),
+                textfont=dict(color=[brand.slice_text_color(c) for c in colors],
+                              size=11),
                 hovertemplate="%{label}: %{value:,.0f} (%{percent})<extra></extra>",
             ))
             fig.update_layout(

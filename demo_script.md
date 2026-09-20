@@ -10,7 +10,7 @@ book; re-check them on the morning, because prices refresh on every load.
 1. **Sign in before you share your screen.** The session token sits in the
    address bar once you are in, and a refresh keeps you signed in for 12 hours,
    so you will never hit the login screen mid-demo. Do not open on it either —
-   beat 1 should start on **My investments**.
+   beat 1 should start on **Portfolio overview**.
 2. Load the app once **on the network you will present from**. This warms the
    price cache and the model-response cache.
 3. Turn **Offline mode** on in the sidebar. The demo then runs entirely from
@@ -24,7 +24,7 @@ book; re-check them on the morning, because prices refresh on every load.
 
 ## Beat 1 — the problem, in one screen (60s)
 
-Open on **My investments**.
+Open on **Portfolio overview**.
 
 > "Ten listed holdings across the United States, India, Saudi Arabia and the
 > Netherlands. Four sectors, three currencies. Small enough that you can check

@@ -121,7 +121,7 @@ What the *security* did against its benchmark over **6M / 1Y / 3Y**, weighted
 the investor bought. Banded: >+10% strong outperformer, +3–10% outperformer,
 ±3% neutral, −3 to −10% underperformer, <−10% severe.
 
-**Used on:** Winners and laggards (entirely), Holding detail's headline strip.
+**Used on:** Winners and laggards (entirely), Holding analysis's headline strip.
 
 > The user asked for this explicitly on 18 Sep: *"I don't want to see those
 > returns as they can be manipulated by the manager."* Money-weighted returns
@@ -213,14 +213,18 @@ what they wrote, and the Modified Dietz denominator follows from it.
 
 | View | Measure | Notes |
 |---|---|---|
-| My investments | IRR, total return | holdings table, sector/market weights |
+| Portfolio overview | IRR, total return | holdings table, sector/market weights (was "My investments") |
 | Portfolio vs mandate | Direct Alpha + Modified Dietz | mandate rationale, benchmark dropdown, 1Y/3Y window returns |
 | Winners and laggards | trend only | split on weighted alpha, attribution by sector/market |
-| Holding detail | live quote + trend | price, day move, position value, windows, chart, cashflows |
-| News | — | Top highlights, six categories, filings in an expander |
-| Data sources | — | provenance, sector attribution, rows the reader rejected |
-| Edit holdings | — | editable grid, record a trade, fill gaps, revert |
-| Load portfolio | — | upload, registry, remove |
+| Holding analysis | live quote + trend | price, day move, position value, windows, chart, cashflows (was "Holding detail") |
+| News | — | Key highlights, six categories, filings in an expander |
+| Data sources | — | provenance, sector attribution, rows excluded from analysis |
+| Manage holdings | — | editable grid, record a trade, fill gaps, revert (was "Edit holdings") |
+| Import portfolio | — | upload, registry, remove (was "Load portfolio") |
+
+Renamed 21 Sep for a more professional-reading nav — the `view ==` checks in
+`streamlit_app.py` use these new labels; grep for the old ones if a stale
+reference turns up.
 
 **Removed deliberately, do not restore without asking:** an interactive
 dashboard ("not looking good"), Commentary (the numeric-guard demo), Fairness
@@ -247,7 +251,7 @@ small jobs to restore if asked.
 
 ## 7. Editing the book
 
-`holdings_edit.py` + the Edit holdings view. The grid is a **position sheet**,
+`holdings_edit.py` + the Manage holdings view. The grid is a **position sheet**,
 one row per holding, matching what custodian statements contain.
 
 - The uploaded file is **never** written over. Edits go to
@@ -320,7 +324,7 @@ The tests that carry the most weight:
 - The sample book may still carry two test positions added during
   development — `E2E.NS` (100,000 @ 600) and `BAJFINANCE.NS`. `E2E.NS` scores
   +150% weighted alpha and dominates Winners and laggards if present. Check
-  Edit holdings and delete both if the sample is being shown to anyone.
+  Manage holdings and delete both if the sample is being shown to anyone.
 - Cold-start test never run: fresh venv, README only, reach a working app.
 - LAN sharing: IT need `http://PSA-LPT-063:8501` (hostname — the DHCP address
   has already changed twice). A firewall rule needs an Administrator PowerShell.

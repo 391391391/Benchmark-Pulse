@@ -128,7 +128,7 @@ received money would read as having made it. That identity is the numerator of
 the **Modified Dietz** return, and the denominator follows from it: each
 contribution is weighted by the share of the window it was actually invested
 for, so a purchase made in the final month is not counted as a full year of
-capital. Every input is printed under **The working**, so the figure can be
+capital. Every input is printed under **Calculation detail**, so the figure can be
 checked rather than taken.
 
 The sample book is **+6.9% over one year** and **−0.5% a year over three**
@@ -195,7 +195,7 @@ use.
 
 A portfolio is not a document, it is a position that changes. Re-uploading a
 spreadsheet after every trade is how a monitoring tool stops being used by the
-second week, so **Edit holdings** puts the book on screen as a table: correct a
+second week, so **Manage holdings** puts the book on screen as a table: correct a
 quantity, add a row for a new position, delete one that has been sold, save, and
 every figure recomputes.
 
@@ -283,7 +283,7 @@ than a plausible one, because inventing a sector silently picks a benchmark.
 Every answer is cached, editable in the grid, and listed with its source under
 **Data sources**.
 
-When nothing can place a company, **Edit holdings** says so rather than leaving
+When nothing can place a company, **Manage holdings** says so rather than leaving
 a blank cell. Each holding without a sector is listed with what happened to it —
 `not found`, with the reason each source gave, or `not looked up` if none has
 been asked yet — and beside it a dropdown of the eleven sectors to **set one by
@@ -351,7 +351,7 @@ request, so a full refresh takes about ten seconds rather than a minute.
 
 ## The live price, and what "live" is allowed to mean
 
-**Holding detail** opens with what the security is trading at now: the price,
+**Holding analysis** opens with what the security is trading at now: the price,
 the move on the day against the previous close, the position at that price, and
 the gain against average cost. All in the listing currency.
 
@@ -379,7 +379,7 @@ within the minute.
 
 ## Judging a holding without its cashflows
 
-**Winners and laggards** and **Holding detail** measure every holding against
+**Winners and laggards** and **Holding analysis** measure every holding against
 its benchmark over **six months, one year and three years** — point to point on
 both sides, across the same trading days.
 
@@ -391,7 +391,7 @@ pages print the two sides of every gap rather than only the difference, because
 +5% built from +30 against +25 is a different fact from +5% built from −10
 against −15, and only the pair tells them apart.
 
-The money-weighted view is still in the tool, on **My investments** and
+The money-weighted view is still in the tool, on **Portfolio overview** and
 **Portfolio vs mandate**, where it answers the other fair question — what the
 client's capital actually earned. It is labelled as such wherever it appears.
 

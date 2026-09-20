@@ -506,9 +506,9 @@ if chosen_id != wanted:
 record = by_id[st.session_state.portfolio_id]
 st.query_params[BOOK_PARAM] = record.id
 
-VIEWS = ["My investments", "Portfolio vs mandate", "Winners and laggards",
-         "Holding detail", "News", "Data sources", "Edit holdings",
-         "Load portfolio"]
+VIEWS = ["Portfolio overview", "Portfolio vs mandate", "Winners and laggards",
+         "Holding analysis", "News", "Data sources", "Manage holdings",
+         "Import portfolio"]
 
 st.sidebar.markdown('<div class="ps-rail-label">Views</div>',
                     unsafe_allow_html=True)
@@ -692,7 +692,7 @@ st.markdown(
 
 # ------------------------------------------------------------ investments --
 
-if view == "My investments":
+if view == "Portfolio overview":
     section("Holdings")
 
     f1, f2, f3 = st.columns([2, 2, 3])
@@ -971,7 +971,7 @@ elif view == "Portfolio vs mandate":
                     unsafe_allow_html=True)
 
             st.markdown(brand.section(
-                "The working",
+                "Calculation detail",
                 "Every input to the formula, so the figures above can be "
                 "checked rather than taken."), unsafe_allow_html=True)
 
@@ -1257,10 +1257,10 @@ elif view == "Winners and laggards":
     # money made. Every figure below is point to point over a fixed window: the
     # same dates for the stock and the index, whoever bought what and when.
     performance_table(
-        winners, f"Beating their benchmark ({len(winners)})",
+        winners, f"Outperformers ({len(winners)})",
         "Ranked by weighted alpha, best first.")
     performance_table(
-        laggards, f"Trailing their benchmark ({len(laggards)})",
+        laggards, f"Underperformers ({len(laggards)})",
         "Ranked by weighted alpha, worst first.")
 
     if len(graded) < len(analysis.holdings):
@@ -1281,7 +1281,7 @@ elif view == "Winners and laggards":
     # is a holding losing money in a falling sector. Both sides are printed.
 
     st.markdown(brand.section(
-        "What the stock did, and what the benchmark did",
+        "Security versus benchmark performance",
         "The same dates on both sides. Nothing here depends on when you "
         "bought, what you paid, or how much."), unsafe_allow_html=True)
 
@@ -1323,7 +1323,7 @@ elif view == "Winners and laggards":
             "how much was put in &mdash; so nothing here can be improved by "
             "timing a purchase. A money-weighted figure answers a different "
             "and equally fair question, which is what the client's capital "
-            "actually earned; that is on <b>My investments</b> and "
+            "actually earned; that is on <b>Portfolio overview</b> and "
             "<b>Portfolio vs mandate</b>, and it is labelled as such.<br><br>"
             f"Alpha is the security's return less its benchmark's over the "
             f"same window. The three are combined as {weight_text}: three "
@@ -1389,7 +1389,7 @@ elif view == "Winners and laggards":
 
 # ----------------------------------------------------------- holding detail --
 
-elif view == "Holding detail":
+elif view == "Holding analysis":
     chosen = st.selectbox("Holding", [h.name for h in analysis.holdings])
     holding = next(h for h in analysis.holdings if h.name == chosen)
 
@@ -1702,7 +1702,7 @@ elif view == "Data sources":
 
     if analysis.load_report.skipped or analysis.load_report.warnings:
         st.markdown(brand.section(
-            "Rows the reader could not use",
+            "Rows excluded from analysis",
             "Anything listed here is absent from every figure in the tool."),
             unsafe_allow_html=True)
         for s in analysis.load_report.skipped:
@@ -1726,7 +1726,7 @@ elif view == "Data sources":
     looked_up = {t: g for t, g in sectors.cached().items() if t in held}
     if looked_up:
         st.markdown(brand.section(
-            "Sectors, and who said so",
+            "Sector attribution",
             "The sector decides which index a holding is measured against, so "
             "it is traced like any other input."), unsafe_allow_html=True)
         st.markdown(
@@ -1753,7 +1753,7 @@ elif view == "Data sources":
                 "marked wherever it appears and it never overrides a source "
                 "that answered. A sector stated in the client's own file "
                 "outranks both and is never looked up at all. Every one of "
-                "them is an ordinary editable value under Edit holdings."),
+                "them is an ordinary editable value under Manage holdings."),
             unsafe_allow_html=True)
 
 # -------------------------------------------------------------------- news --
@@ -1787,7 +1787,7 @@ elif view == "News":
             ]),
             unsafe_allow_html=True)
 
-        # -- top highlights -----------------------------------------------
+        # -- key highlights -----------------------------------------------
         #
         # The same items as below, in priority order. A reader with four
         # minutes needs the lawsuit and the order win, not ninety rows in six
@@ -1807,7 +1807,7 @@ elif view == "News":
             bad = sum(1 for r in top if r.tone == "bad")
             good = sum(1 for r in top if r.tone == "good")
             st.markdown(brand.section(
-                "Top highlights",
+                "Key highlights",
                 f"{len(top)} item{'s' if len(top) != 1 else ''} that would "
                 f"change the investment case &mdash; {bad} negative, {good} "
                 f"positive, newest first. Each is also filed under its "
@@ -1848,7 +1848,7 @@ elif view == "News":
             # Said rather than left blank. A section that simply vanishes reads
             # as a feature that failed; "nothing material in fifty articles" is
             # itself a finding about a quiet quarter.
-            st.markdown(brand.section("Top highlights"),
+            st.markdown(brand.section("Key highlights"),
                         unsafe_allow_html=True)
             st.markdown(
                 brand.note(
@@ -1948,8 +1948,8 @@ elif view == "News":
 
 # -------------------------------------------------------------- portfolios --
 
-elif view == "Edit holdings":
-    section("Edit holdings",
+elif view == "Manage holdings":
+    section("Manage holdings",
             "The book as a table. Correct a quantity, add a row for a new "
             "position, delete one you have sold &mdash; then save, and every "
             "figure in the tool recomputes from it. The uploaded file is never "
@@ -2217,7 +2217,7 @@ elif view == "Edit holdings":
             # every feed there is, and a value they state is never looked up or
             # overwritten afterwards.
             st.markdown(brand.section(
-                "Set them by hand",
+                "Set values manually",
                 "Overrules every source. Choose one and it is used exactly as "
                 "stated."), unsafe_allow_html=True)
 
@@ -2407,8 +2407,8 @@ elif view == "Edit holdings":
                if record.edited else "")
             + '</div>', unsafe_allow_html=True)
 
-elif view == "Load portfolio":
-    section("Load a portfolio",
+elif view == "Import portfolio":
+    section("Import a portfolio",
             "Excel and CSV are read directly. PDF and PowerPoint are "
             "transcribed onto the same schema. An uploaded book is added to "
             "the list and opened; switch between books in the rail.")
@@ -2494,7 +2494,7 @@ elif view == "Load portfolio":
                             f"{holdings_edit.GAP_FIELDS[col]} "
                             f"&mdash; {escape(why)}"
                             for (t, col), why in lost.items())
-                        + "<br><br>Set them by hand under <b>Edit holdings</b>. "
+                        + "<br><br>Set them by hand under <b>Manage holdings</b>. "
                           "Until then they are measured against a broader "
                           "index than they should be.", "warn"),
                     unsafe_allow_html=True)

@@ -29,7 +29,7 @@ already been tried and reverted for stated reasons.
 4. **Three return measures are in use deliberately.** Direct Alpha
    (money-weighted, whole-life) on the KPI strip and Portfolio vs mandate; the
    6M/1Y/3Y trend score (time-weighted, cashflow-independent) on Winners and
-   laggards and Holding detail; Modified Dietz for the portfolio's 1Y/3Y window
+   laggards and Holding analysis; Modified Dietz for the portfolio's 1Y/3Y window
    return. Mixing them produces numbers that look broken. §4 of `details.md`
    explains which belongs where and why.
 

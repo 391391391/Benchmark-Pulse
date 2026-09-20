@@ -517,11 +517,6 @@ view = st.sidebar.radio("Views", VIEWS, label_visibility="collapsed")
 st.sidebar.markdown('<div class="ps-rail-label">Settings</div>',
                     unsafe_allow_html=True)
 
-dark = st.sidebar.toggle("Dark theme", value=st.session_state.dark)
-if dark != st.session_state.dark:
-    st.session_state.dark = dark
-    st.rerun()
-
 offline = st.sidebar.toggle(
     "Offline mode", value=False,
     help="Use only cached market data. Turn on before presenting so a dropped "
@@ -832,8 +827,6 @@ if view == "Portfolio overview":
 # -------------------------------------------------------- mandate benchmark --
 
 elif view == "Portfolio vs mandate":
-    section("Portfolio vs mandate benchmark")
-
     if portfolio is None:
         st.warning("No portfolio-level result.")
     else:

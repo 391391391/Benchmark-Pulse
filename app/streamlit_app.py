@@ -933,46 +933,6 @@ elif view == "Portfolio vs mandate":
                     rows),
                 unsafe_allow_html=True)
 
-            # The windows and the whole-life figure can point opposite ways.
-            # When they do, that is the finding on this page -- three numbers
-            # with different signs and no explanation is how a reader decides
-            # the tool is broken.
-            one = next((w for w in usable if w.code == "1Y"), None)
-            three = next((w for w in usable if w.code == "3Y"), None)
-            # Each window carries its own wording: the one-year figure is a
-            # period return and the other two are rates, and calling all three
-            # the same thing is how a reader ends up comparing a total against
-            # a per-annum number.
-            marks = [(one.alpha if one else None, "", "over the last year"),
-                     (three.alpha_annual if three else None,
-                      " a year", "over three years"),
-                     (portfolio.direct_alpha, " a year", "since inception")]
-            present = [(v, rate, tail) for v, rate, tail in marks
-                       if v is not None]
-            mixed = len({v > 0 for v, _, _ in present}) > 1
-
-            if present:
-                said = "; ".join(
-                    f"<b>{fmt_pct(abs(v))}</b>{rate} "
-                    f"{'ahead' if v > 0 else 'behind'} {tail}"
-                    for v, rate, tail in present)
-                st.markdown(
-                    brand.note(
-                        "The windows disagree" if mixed
-                        else "Consistent across windows",
-                        f"The book is {said}. "
-                        + ("A portfolio can lead over one window and trail "
-                           "over another, and which one matters depends on "
-                           "the question: three years carries the longer "
-                           "record, one year carries the current trend, and "
-                           "the since-inception figure is what this client's "
-                           "money actually earned given when it went in."
-                           if mixed else
-                           "The windows and the whole-life figure agree on "
-                           "direction, which is the straightforward case."),
-                        "warn" if mixed else "accent"),
-                    unsafe_allow_html=True)
-
             st.markdown(brand.section(
                 "Calculation detail",
                 "Every input to the formula, so the figures above can be "

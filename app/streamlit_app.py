@@ -652,15 +652,24 @@ st.markdown(
         {"label": "Portfolio XIRR",
          "value": fmt_pct(portfolio.irr) if portfolio else "n/a",
          "note": "since inception"},
-        # The basis is stated, because without it the benchmark return looks
-        # like a market number over some unrelated window sitting next to a
-        # money-weighted portfolio figure. It is not: it is the IRR of these
-        # cashflows, on these dates, invested in the index instead.
         {"label": "Mandate",
-         "value": mandate_scope(portfolio) if portfolio else "n/a",
-         "note": (f"{mandate_index(portfolio)}{DOT}"
-                  f"{fmt_pct(portfolio.benchmark_irr)} on the same cashflows")
-                 if portfolio else ""},
+         "value": mandate_scope(portfolio) if portfolio else "n/a"},
+        {"label": "Benchmark",
+         "value": mandate_index(portfolio) if portfolio else "n/a",
+         "note": portfolio.decision.benchmark_ticker if portfolio else ""},
+        # The basis is stated on hover rather than left implicit, because
+        # without it this reads as a market number over some unrelated window
+        # sitting next to a money-weighted portfolio figure. It is not: it is
+        # the IRR of these cashflows, on these dates, invested in the index
+        # instead -- which is what makes it comparable to Portfolio XIRR.
+        {"label": brand.abbr(
+            "Benchmark return",
+            "Computed on the portfolio's own cashflows and dates -- the "
+            "return the same capital would have earned invested in the "
+            "mandate benchmark instead, so it is directly comparable to "
+            "Portfolio XIRR."),
+         "value": fmt_pct(portfolio.benchmark_irr) if portfolio else "n/a",
+         "note": "since inception"},
         {"label": "Alpha on benchmark",
          "value": fmt_pct(portfolio.direct_alpha) if portfolio else "n/a",
          "note": "a year",

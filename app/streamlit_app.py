@@ -591,7 +591,7 @@ st.sidebar.markdown(
     '<div class="ps-rail-label">Signed in</div>'
     f'<div class="ps-sb-user"><div class="av">{user.initials}</div>'
     f'<div class="who"><div class="nm">{user.name}</div>'
-    f'<div class="rl">{user.role}</div></div></div>',
+    f'<div class="rl">{user.role.capitalize()}</div></div></div>',
     unsafe_allow_html=True,
 )
 if st.sidebar.button("Sign out", use_container_width=True):

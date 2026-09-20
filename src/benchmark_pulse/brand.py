@@ -417,8 +417,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"]
    its rule. */
 .ps-rail-label {{
     display: block; line-height: 1.2;
-    font-size: .57rem; font-weight: 700; letter-spacing: .15em;
-    text-transform: uppercase; color: rgba(213,222,236,.36);
+    font-size: .64rem; font-weight: 700; letter-spacing: .02em;
+    color: rgba(213,222,236,.42);
     margin: 1.05rem 0 .5rem 0; padding-bottom: .32rem;
     border-bottom: 1px solid rgba(255,255,255,.07);
 }}
@@ -502,8 +502,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }}
 .ps-sb-user .rl {{
-    font-size: .58rem; color: rgba(213,222,236,.4);
-    text-transform: uppercase; letter-spacing: .1em;
+    font-size: .66rem; color: rgba(213,222,236,.46);
+    letter-spacing: .01em;
 }}
 .ps-sb-engine {{ font-size: .68rem; line-height: 1.45; word-break: break-all; }}
 
@@ -542,8 +542,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 .ps-strip .cell:last-child {{ border-right: none; }}
 .ps-strip .cell + .cell {{ padding-left: 1.1rem; }}
 .ps-strip .k {{
-    font-size: .58rem; font-weight: 700; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--ps-muted); white-space: nowrap;
+    font-size: .68rem; font-weight: 700; letter-spacing: .01em;
+    color: var(--ps-muted); white-space: nowrap;
 }}
 .ps-strip .v {{
     font-family: {FONT_DISPLAY}; font-weight: 800; font-size: 1.28rem;
@@ -564,8 +564,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 
 /* --------------------------------------------------------------- section */
 .ps-section {{
-    font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .78rem;
-    letter-spacing: .1em; text-transform: uppercase; color: var(--ps-muted);
+    font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .86rem;
+    letter-spacing: 0; color: var(--ps-muted);
     margin: 1.5rem 0 .5rem 0; padding-bottom: .3rem;
     border-bottom: 1px solid var(--ps-hairline);
 }}
@@ -603,8 +603,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
    type -- measured 9px above the chart's own box, straight into the table
    above it. A real element cannot escape the layout it is in. */
 .ps-chart-label {{
-    font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .62rem;
-    letter-spacing: .13em; text-transform: uppercase; color: var(--ps-muted);
+    font-family: {FONT_DISPLAY}; font-weight: 700; font-size: .72rem;
+    letter-spacing: .01em; color: var(--ps-muted);
     margin: .3rem 0 .15rem 0;
 }}
 .ps-table {{
@@ -613,8 +613,8 @@ section[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:not([dat
 }}
 .ps-table thead th {{
     position: sticky; top: 0; z-index: 2; background: var(--ps-canvas);
-    text-align: left; font-weight: 700; font-size: .58rem;
-    letter-spacing: .13em; text-transform: uppercase; color: var(--ps-muted);
+    text-align: left; font-weight: 700; font-size: .68rem;
+    letter-spacing: .01em; color: var(--ps-muted);
     padding: .3rem .7rem .4rem .7rem; white-space: nowrap;
     border-bottom: 1.5px solid var(--ps-heading);
 }}

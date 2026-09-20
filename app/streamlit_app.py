@@ -625,7 +625,6 @@ st.markdown(
         + f"{DOT}prices as at <b>"
         + f"{datetime.fromtimestamp(st.session_state.load_stamp):%H:%M}</b>"
         + (" (cached)" if offline else ""),
-        badge="sample" if record.is_demo else "",
     ),
     unsafe_allow_html=True,
 )

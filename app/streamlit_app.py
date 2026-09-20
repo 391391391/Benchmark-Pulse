@@ -506,16 +506,6 @@ if chosen_id != wanted:
 record = by_id[st.session_state.portfolio_id]
 st.query_params[BOOK_PARAM] = record.id
 
-st.sidebar.markdown(
-    # .42 measured 3.1:1 on the rail, which is under AA for 10px type. A hint
-    # nobody can read is not a hint.
-    f'<div style="font-size:.62rem;color:rgba(213,222,236,.62);'
-    f'margin:-.1rem 0 .2rem 0;">'
-    f'{len(records)} portfolio{"s" if len(records) != 1 else ""} loaded'
-    f' &middot; add one under Load portfolio</div>',
-    unsafe_allow_html=True,
-)
-
 VIEWS = ["My investments", "Portfolio vs mandate", "Winners and laggards",
          "Holding detail", "News", "Data sources", "Edit holdings",
          "Load portfolio"]

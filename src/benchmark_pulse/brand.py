@@ -81,8 +81,8 @@ DARK_MUTED = "#8A9BB3"
 # a fill needs) now that nothing outlines them -- the in-slice percentage
 # label and the legend are what still carry them.
 CHART_CATEGORICAL = {
-    "light": ["#ED1175", "#E7E6E6", "#D0F7F0", "#29BDAD"],
-    "dark": ["#ED1175", "#E7E6E6", "#D0F7F0", "#29BDAD"],
+    "light": ["#F2589E", "#E7E6E6", "#D0F7F0", "#29BDAD"],
+    "dark": ["#F2589E", "#E7E6E6", "#D0F7F0", "#29BDAD"],
 }
 
 #: Where a category falls outside the four identities above -- the fifth

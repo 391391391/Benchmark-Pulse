@@ -1407,67 +1407,6 @@ elif view == "Winners and laggards":
 
     # -- the two sides of each gap ----------------------------------------
     #
-    # An alpha alone hides where it came from: +5% built from +30 against +25
-    # is a different fact from +5% built from -10 against -15, and the second
-    # is a holding losing money in a falling sector. Both sides are printed.
-
-    st.markdown(brand.section(
-        "Security versus benchmark performance",
-        "The same dates on both sides. Nothing here depends on when you "
-        "bought, what you paid, or how much."), unsafe_allow_html=True)
-
-    ranked = sorted(graded, key=weighted_of, reverse=True)
-    if ranked:
-        basis = {c: (ranked[0].asset_id and window_of(ranked[0], c))
-                 for c in CODES}
-        head = [("Holding", "ps-name")]
-        for code in CODES:
-            # "3 years, a year" rather than "3 years a year" -- the same
-            # wording the mandate page uses for an annualised window.
-            annual = basis.get(code) is not None and basis[code].annualised
-            suffix = ", a year" if annual else ""
-            head += [(f"{LABELS[code]}{suffix}", "ps-num"),
-                     ("Benchmark", "ps-num"), ("Gap", "")]
-        st.markdown(
-            brand.table(
-                head,
-                [[h.name] + [cell
-                             for c in CODES
-                             for cell in (
-                                 fmt_pct(window_of(h, c).security)
-                                 if window_of(h, c) else DASH,
-                                 fmt_pct(window_of(h, c).benchmark)
-                                 if window_of(h, c) else DASH,
-                                 _pct(alpha_of(h, c)))]
-                 for h in ranked]),
-            unsafe_allow_html=True)
-
-    weight_text = ", ".join(f"{LABELS[c]} {w:.0%}"
-                            for c, w in TREND_WEIGHTS.items())
-    st.markdown(
-        brand.note(
-            "Why these figures ignore your cashflows",
-            "Every number on this page is point to point: the security's "
-            "closing price at the start of the window against its price now, "
-            "and the benchmark measured across the same trading days. Nothing "
-            "depends on when a position was opened, what was paid for it, or "
-            "how much was put in &mdash; so nothing here can be improved by "
-            "timing a purchase. A money-weighted figure answers a different "
-            "and equally fair question, which is what the client's capital "
-            "actually earned; that is on <b>Portfolio overview</b> and "
-            "<b>Portfolio vs benchmark</b>, and it is labelled as such.<br><br>"
-            f"Alpha is the security's return less its benchmark's over the "
-            f"same window. The three are combined as {weight_text}: three "
-            f"years covers a full cycle in the company, six months is as often "
-            f"sentiment as substance. Windows longer than a year are "
-            f"annualised on both sides. Bands: above +10% strong outperformer, "
-            f"+3% to +10% outperformer, &plusmn;3% neutral, &minus;3% to "
-            f"&minus;10% underperformer, below &minus;10% severe. Where a "
-            f"window has no data its weight is shared across the others rather "
-            f"than counted as zero, and the row is marked <b>partial</b>.",
-        ),
-        unsafe_allow_html=True)
-
     # -- attribution ------------------------------------------------------
     #
     # Rebuilt on the same measure as the rest of the page. The analysis layer's

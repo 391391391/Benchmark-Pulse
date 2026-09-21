@@ -959,7 +959,7 @@ if view == "Portfolio overview":
                 legend=dict(orientation="v", x=1.03, y=0.5, yanchor="middle",
                            font=dict(size=10)),
                 annotations=[dict(
-                    text=f"{money(total)}<br><span style='font-size:10px;"
+                    text=f"<b>{money(total)}</b><br><span style='font-size:10px;"
                          f"letter-spacing:.01em;'>Total</span>",
                     x=0.5, y=0.5, showarrow=False, align="center",
                     font=dict(size=15, color=brand.DARK_TEXT if dark else brand.INK),
@@ -1247,7 +1247,7 @@ elif view == "Portfolio vs benchmark":
             legend=dict(orientation="v", x=1.03, y=0.5, yanchor="middle",
                        font=dict(size=10)),
             annotations=[dict(
-                text=f"{money(analysis.total_capital)}<br><span "
+                text=f"<b>{money(analysis.total_capital)}</b><br><span "
                      f"style='font-size:10px;letter-spacing:.01em;'>"
                      f"Capital</span>",
                 x=0.5, y=0.5, showarrow=False, align="center",
@@ -2421,8 +2421,6 @@ elif view == "Import portfolio":
 
 st.markdown(
     f'<div class="ps-footer"><div>Benchmark Pulse{DOT}Preferred Square{DOT}'
-    f'{brand.TAGLINE}</div><div>Portfolio measured against its mandate; every '
-    f'holding against its sector. Figures computed by the engine, not the '
-    f'model.</div></div>',
+    f'{brand.TAGLINE}</div></div>',
     unsafe_allow_html=True,
 )

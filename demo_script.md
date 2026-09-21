@@ -39,7 +39,7 @@ the ten are banks; that matters in beat 3.
 
 ## Beat 2 — level one: the mandate (90s)
 
-Go to **Portfolio vs mandate**.
+Go to **Portfolio vs benchmark**.
 
 > "First question: did the book beat the market it was hired to beat? That
 > depends on the mandate, and the mandate is not what the portfolio is called —

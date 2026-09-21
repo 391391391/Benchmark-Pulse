@@ -113,7 +113,7 @@ same dates" gives 17.6992% against the tool's 17.6897% — **0.95 bp apart**.
 
 **Used on:** the KPI strip (Portfolio XIRR, Mandate, Benchmark, Benchmark
 XIRR, Alpha on benchmark), the
-Portfolio vs mandate verdict card, the win rate.
+Portfolio vs benchmark verdict card, the win rate.
 
 ### Trend score — time-weighted, fixed windows
 
@@ -139,7 +139,7 @@ the investor bought. Banded: >+10% strong outperformer, +3–10% outperformer,
 time-weighted average capital. Specified by the user; the numerator is exactly
 what they wrote, and the Modified Dietz denominator follows from it.
 
-**Used on:** Portfolio vs mandate, "Return over one and three years".
+**Used on:** Portfolio vs benchmark, "Return over one and three years".
 
 ---
 
@@ -225,7 +225,7 @@ what they wrote, and the Modified Dietz denominator follows from it.
 | View | Measure | Notes |
 |---|---|---|
 | Portfolio overview | IRR, total return | holdings table, sector/market weights (was "My investments") |
-| Portfolio vs mandate | Direct Alpha + Modified Dietz | mandate rationale, benchmark dropdown, 1Y/3Y window returns |
+| Portfolio vs benchmark | Direct Alpha + Modified Dietz | mandate rationale, benchmark dropdown, 1Y/3Y window returns |
 | Winners and laggards | trend only | split on weighted alpha, attribution by sector/market |
 | Holding analysis | live quote + trend | price, day move, position value, windows, chart, cashflows (was "Holding detail") |
 | News | — | Key highlights, six categories, filings in an expander |
@@ -245,7 +245,7 @@ the view is a UI-only job if this is asked for again.
 **Removed deliberately, do not restore without asking:** an interactive
 dashboard ("not looking good"), Commentary (the numeric-guard demo), Fairness
 caveats, Each stock vs its sector, and (as of 18 Sep) the two-column summary
-card on Portfolio vs mandate that restated the KPI strip — Mandate now fills
+card on Portfolio vs benchmark that restated the KPI strip — Mandate now fills
 the full width there. `narrative.py` and `adjustments.py` still exist and are
 still tested; they have no screen.
 

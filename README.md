@@ -75,7 +75,7 @@ And NSE publishes the Nifty 500 price-only, which understates the benchmark by
 its dividend yield, so the total-return Nifty 50 sits beside it as the
 narrower-but-honest alternative.
 
-The benchmark is a dropdown on the **Portfolio vs mandate** view. Changing it
+The benchmark is a dropdown on the **Portfolio vs benchmark** view. Changing it
 recomputes every figure on the page, which is the fastest way to see how much
 the choice is worth: the sample book reads **+1.2%** against MSCI ACWI and
 **−4.0%** against the Nasdaq-100.
@@ -391,7 +391,7 @@ pages print the two sides of every gap rather than only the difference, because
 against −15, and only the pair tells them apart.
 
 The money-weighted view is still in the tool, on **Portfolio overview** and
-**Portfolio vs mandate**, where it answers the other fair question — what the
+**Portfolio vs benchmark**, where it answers the other fair question — what the
 client's capital actually earned. It is labelled as such wherever it appears.
 
 ### The trend score

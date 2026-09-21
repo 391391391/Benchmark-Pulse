@@ -629,7 +629,7 @@ if chosen_id != wanted:
 record = by_id[st.session_state.portfolio_id]
 st.query_params[BOOK_PARAM] = record.id
 
-VIEWS = ["Portfolio overview", "Portfolio vs mandate", "Winners and laggards",
+VIEWS = ["Portfolio overview", "Portfolio vs benchmark", "Winners and laggards",
          "Holding analysis", "News", "Manage holdings",
          "Import portfolio"]
 
@@ -800,7 +800,7 @@ st.markdown(
         # the label cannot.
         {"label": "Portfolio XIRR",
          "value": fmt_pct(portfolio.irr) if portfolio else "n/a",
-         "note": "since inception"},
+         "note": "since portfolio inception"},
         {"label": "Mandate",
          "value": mandate_scope(portfolio) if portfolio else "n/a"},
         {"label": "Benchmark",
@@ -817,7 +817,7 @@ st.markdown(
             "mandate benchmark instead, so it is directly comparable to "
             "Portfolio XIRR."),
          "value": fmt_pct(portfolio.benchmark_irr) if portfolio else "n/a",
-         "note": "since inception"},
+         "note": "since portfolio inception"},
         {"label": "Alpha on benchmark",
          "value": fmt_pct(portfolio.direct_alpha) if portfolio else "n/a",
          "note": "a year",
@@ -978,7 +978,7 @@ if view == "Portfolio overview":
 
 # -------------------------------------------------------- mandate benchmark --
 
-elif view == "Portfolio vs mandate":
+elif view == "Portfolio vs benchmark":
     if portfolio is None:
         st.warning("No portfolio-level result.")
     else:
@@ -1455,7 +1455,7 @@ elif view == "Winners and laggards":
             "timing a purchase. A money-weighted figure answers a different "
             "and equally fair question, which is what the client's capital "
             "actually earned; that is on <b>Portfolio overview</b> and "
-            "<b>Portfolio vs mandate</b>, and it is labelled as such.<br><br>"
+            "<b>Portfolio vs benchmark</b>, and it is labelled as such.<br><br>"
             f"Alpha is the security's return less its benchmark's over the "
             f"same window. The three are combined as {weight_text}: three "
             f"years covers a full cycle in the company, six months is as often "

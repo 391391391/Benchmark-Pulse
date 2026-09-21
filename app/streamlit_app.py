@@ -917,12 +917,6 @@ if view == "Portfolio overview":
 
         st.write("")
         dark = st.session_state.dark
-        # A strong, theme-matched outline rather than a background-coloured
-        # one: with only four brand colours to draw from, two of them (the
-        # light grey and the pale mint) barely register against either
-        # surface on their own. The outline is what makes every slice read as
-        # a shape, on both surfaces, regardless of how pale its fill is.
-        outline = "#FFFFFF" if dark else brand.NAVY_DEEP
         # The full universe each breakdown draws from, in a fixed order -- not
         # the sectors or markets in *this* book. Colour comes from a name's
         # position here, so filtering the holdings table can shrink the pie
@@ -952,7 +946,7 @@ if view == "Portfolio overview":
                 values=grouped.values,
                 hole=0.58,
                 sort=False,
-                marker=dict(colors=colors, line=dict(color=outline, width=2)),
+                marker=dict(colors=colors),
                 text=slice_text,
                 textinfo="text",
                 textposition="inside",
@@ -1232,7 +1226,6 @@ elif view == "Portfolio vs benchmark":
         # the same coloured identity per market -- a country's colour does
         # not change depending on which page or which of these two charts is
         # showing it.
-        outline = "#FFFFFF" if dark else brand.NAVY_DEEP
         colors = [brand.categorical_slot(c, MARKET_UNIVERSE, dark)
                   for c in by_country]
         slice_text = [f"{w:.0%}" if w >= 0.08 else "" for w in by_country.values()]
@@ -1241,7 +1234,7 @@ elif view == "Portfolio vs benchmark":
             values=list(by_country.values()),
             hole=0.58,
             sort=False,
-            marker=dict(colors=colors, line=dict(color=outline, width=2)),
+            marker=dict(colors=colors),
             text=slice_text,
             textinfo="text",
             textposition="inside",

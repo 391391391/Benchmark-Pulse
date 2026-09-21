@@ -73,16 +73,15 @@ DARK_MUTED = "#8A9BB3"
 # A deliberate exception to "colour carries meaning only" above: a sector or
 # market breakdown has no beat/miss to report, only identity, and teal-only
 # shading of same-size slices is not something a reader can actually tell
-# apart. The firm's own four-colour swatch, used as-is at the owner's request
-# even though two of the four -- the light grey and the pale mint -- read
-# close to identical to each other (normal-vision contrast 4.7, versus the 15
-# a categorical pair needs) and close to invisible against a light surface
-# (contrast ~1.1:1, versus the 3:1 a fill needs). `marker.line` on every slice
-# in `categorical_slot`'s caller carries the weight those two colours can't:
-# a strong outline is what makes a near-white slice read as a shape at all.
+# apart. Slot 2 was the firm's own light grey; replaced with their pink at
+# the owner's request, with the slice borders that used to compensate for
+# the pale colours removed at the same time. The pale mint (slot 3) still
+# reads close to invisible against a light surface on its own (contrast
+# ~1.1:1, versus the 3:1 a fill needs) now that nothing outlines it -- the
+# in-slice percentage label and the legend are what still carry it.
 CHART_CATEGORICAL = {
-    "light": ["#44546A", "#E7E6E6", "#D0F7F0", "#29BDAD"],
-    "dark": ["#44546A", "#E7E6E6", "#D0F7F0", "#29BDAD"],
+    "light": ["#44546A", "#ED1175", "#D0F7F0", "#29BDAD"],
+    "dark": ["#44546A", "#ED1175", "#D0F7F0", "#29BDAD"],
 }
 
 #: Where a category falls outside the four identities above -- the fifth

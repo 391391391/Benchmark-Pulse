@@ -937,10 +937,7 @@ if view == "Portfolio overview":
                 col.caption("Nothing to show for the current selection.")
                 continue
             colors = [brand.categorical_slot(g, universe, dark) for g in grouped.index]
-            # A slice under 8% of the book has no room for a percentage without
-            # overlapping its neighbours -- the legend and hover carry it instead.
-            slice_text = [f"{v / total:.0%}" if v / total >= 0.08 else ""
-                          for v in grouped.values]
+            slice_text = [f"{v / total:.0%}" for v in grouped.values]
             fig = go.Figure(go.Pie(
                 labels=[label_for(g) for g in grouped.index],
                 values=grouped.values,
@@ -1228,7 +1225,7 @@ elif view == "Portfolio vs benchmark":
         # showing it.
         colors = [brand.categorical_slot(c, MARKET_UNIVERSE, dark)
                   for c in by_country]
-        slice_text = [f"{w:.0%}" if w >= 0.08 else "" for w in by_country.values()]
+        slice_text = [f"{w:.0%}" for w in by_country.values()]
         fig = go.Figure(go.Pie(
             labels=[country_name(c) for c in by_country],
             values=list(by_country.values()),

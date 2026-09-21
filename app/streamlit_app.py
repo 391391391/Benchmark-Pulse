@@ -804,15 +804,14 @@ st.markdown(
         {"label": "Mandate",
          "value": mandate_scope(portfolio) if portfolio else "n/a"},
         {"label": "Benchmark",
-         "value": mandate_index(portfolio) if portfolio else "n/a",
-         "note": portfolio.decision.benchmark_ticker if portfolio else ""},
+         "value": mandate_index(portfolio) if portfolio else "n/a"},
         # The basis is stated on hover rather than left implicit, because
         # without it this reads as a market number over some unrelated window
         # sitting next to a money-weighted portfolio figure. It is not: it is
         # the IRR of these cashflows, on these dates, invested in the index
         # instead -- which is what makes it comparable to Portfolio XIRR.
         {"label": brand.abbr(
-            "Benchmark return",
+            "Benchmark XIRR",
             "Computed on the portfolio's own cashflows and dates -- the "
             "return the same capital would have earned invested in the "
             "mandate benchmark instead, so it is directly comparable to "

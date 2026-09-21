@@ -112,7 +112,7 @@ Verified independently: simulating "buy ACWI with the same 11 cashflows on the
 same dates" gives 17.6992% against the tool's 17.6897% — **0.95 bp apart**.
 
 **Used on:** the KPI strip (Portfolio XIRR, Mandate, Benchmark, Benchmark
-return, Alpha on benchmark), the
+XIRR, Alpha on benchmark), the
 Portfolio vs mandate verdict card, the win rate.
 
 ### Trend score — time-weighted, fixed windows

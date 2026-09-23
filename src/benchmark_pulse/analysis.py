@@ -270,11 +270,21 @@ def analyse(
     client: LLMClient | None = None,
     reporting_currency: str = "USD",
     portfolio_name: str = "Portfolio",
+    portfolio_id: str = "",
     reuse_decisions: bool = True,
 ) -> PortfolioAnalysis:
-    """Run both levels of benchmarking on one client workbook."""
+    """Run both levels of benchmarking on one client workbook.
+
+    ``portfolio_id`` namespaces the mandate decision this book's Level-1
+    benchmark is cached under. Left blank it falls back to the single shared
+    "PORTFOLIO" slot every caller used before this parameter existed -- which
+    silently made one book's analyst-set mandate become every other book's
+    mandate too, the moment either had a non-"rules" decision on file. Every
+    caller in this app now passes the record's own id.
+    """
     md = md or MarketData()
     client = client or get_client()
+    mandate_key = f"{portfolio_id}:PORTFOLIO" if portfolio_id else "PORTFOLIO"
 
     # Pull every series the report could need in one batched request before
     # anything is computed. The benchmark universe is small and fixed, so
@@ -344,11 +354,11 @@ def analyse(
             report.streams, md, reporting_currency, portfolio_name)
         exposure = classify_exposure(report.streams, weights)
 
-        mandate = saved.get("PORTFOLIO")
+        mandate = saved.get(mandate_key)
         if mandate is None or (mandate.source == "rules" and client.is_live):
             mandate = assign_mandate_benchmark(
                 report.streams, exposure, portfolio_name, client)
-            saved["PORTFOLIO"] = mandate
+            saved[mandate_key] = mandate
 
         pme = None
         try:

@@ -278,11 +278,23 @@ def ingest(source: Path, workspace: Path,
                             rows_found={"workbook": -1})
 
     if fmt == "csv":
-        frame = pd.read_csv(source)
-        counts = write_canonical(
-            {"holdings": frame.to_dict("records")}, canonical)
+        try:
+            frame = pd.read_csv(source)
+        except Exception as exc:  # noqa: BLE001
+            raise IngestError(f"could not read the CSV: {exc}") from exc
+
+        # write_canonical()/_frame_from() expect the AI model's snake_case
+        # schema keys ("name", "ticker", "cost_per_unit", ...) -- routing a
+        # CSV's own headers ("Security Name", "Ticker", "Avg Cost", ... or
+        # any real client naming) through that produced a Holdings sheet with
+        # every cell blank, since none of those keys ever match. A CSV needs
+        # the same tolerant header-row/alias reader load_listed() already
+        # uses for Excel, so its own headers are written through unchanged
+        # and interpreted there, not remapped here.
+        with pd.ExcelWriter(canonical, engine="openpyxl") as xl:
+            frame.to_excel(xl, sheet_name="Holdings", index=False)
         return IngestResult(canonical_path=canonical, source_format=fmt,
-                            rows_found=counts)
+                            rows_found={"Holdings": len(frame)})
 
     client = client or get_client()
     if not client.is_live:

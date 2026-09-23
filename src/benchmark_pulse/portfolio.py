@@ -136,6 +136,24 @@ def _normalise_country(raw: str) -> str:
     return _COUNTRY_ALIASES.get(key, raw.strip().upper()[:2])
 
 
+#: The currency a market trades in. Used both to prefill a new row in Manage
+#: holdings (an analyst adding a Tadawul line should not have to remember that
+#: it settles in riyals, and the value stays editable there since a
+#: cross-listing can contradict this) and, here, as the ingest-time fallback
+#: when a workbook has no Currency column or leaves a cell blank -- better
+#: than defaulting every holding to USD regardless of where it actually
+#: trades.
+MARKET_CURRENCY: dict[str, str] = {
+    "US": "USD", "IN": "INR", "SA": "SAR", "GB": "GBP", "JP": "JPY",
+    "NL": "EUR", "DE": "EUR", "FR": "EUR", "IE": "EUR", "BE": "EUR",
+    "AT": "EUR", "IT": "EUR", "ES": "EUR", "FI": "EUR", "GR": "EUR",
+    "PT": "EUR", "DK": "DKK", "SE": "SEK", "NO": "NOK", "CH": "CHF",
+    "CA": "CAD", "AU": "AUD", "NZ": "NZD", "SG": "SGD", "HK": "HKD",
+    "CN": "CNY", "KR": "KRW", "TW": "TWD", "AE": "AED", "QA": "QAR",
+    "KW": "KWD", "BR": "BRL", "MX": "MXN", "ZA": "ZAR", "TR": "TRY",
+}
+
+
 def _country_from_ticker(ticker: str) -> str:
     """Last-resort country, inferred from the exchange suffix."""
     upper = ticker.upper()
@@ -258,7 +276,22 @@ def load_listed(path: Path, md: MarketData, report: LoadReport,
         qty = parse_number(row[cols["quantity"]])
         cost = parse_number(row[cols["cost"]]) if "cost" in cols else None
         bought = parse_date(row[cols["date"]])
-        ccy = str(row[cols["currency"]]).strip().upper() if "currency" in cols else "USD"
+
+        # A blank cell here used to become the literal string "NAN" (str(nan)
+        # upper-cased), which then crashed the whole analysis several layers
+        # down as an unresolvable FX pair rather than just this one row. And a
+        # missing column defaulted every holding to USD with no inference at
+        # all, unlike country and sector just above -- silently overstating a
+        # foreign holding's weight in every portfolio-level figure while its
+        # own row-level return looked completely normal.
+        effective_country = row_country or _country_from_ticker(ticker)
+        ccy = ""
+        if "currency" in cols and pd.notna(row[cols["currency"]]):
+            stated_ccy = str(row[cols["currency"]]).strip().upper()
+            if stated_ccy and stated_ccy != "NAN":
+                ccy = stated_ccy
+        if not ccy:
+            ccy = MARKET_CURRENCY.get(effective_country, "USD")
 
         if not ticker or qty is None or bought is None:
             report.skipped.append(
@@ -285,8 +318,7 @@ def load_listed(path: Path, md: MarketData, report: LoadReport,
 
         stream = CashflowStream(
             asset_id=ticker, name=first, asset_class=AssetClass.PUBLIC_EQUITY,
-            currency=ccy, country=row_country or _country_from_ticker(ticker),
-            sector=sector,
+            currency=ccy, country=effective_country, sector=sector,
         )
         stream.add(bought, -(qty * cost), FlowType.PURCHASE)
 

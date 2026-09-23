@@ -59,6 +59,18 @@ class PortfolioRecord:
     #: The working copy, once someone has edited the holdings in the app. Not
     #: stored in registry.json -- it is applied from EDITS at load.
     edited_path: str | None = None
+    #: What every portfolio-level figure is rolled up in. Blank predates this
+    #: field, or a book whose analyst never chose -- both mean USD, today's
+    #: only behaviour, so the default keeps every existing record unchanged.
+    reporting_currency: str = "USD"
+    #: A mandate stated at upload, if the analyst named one instead of
+    #: leaving it to the rules/model engine. None means "Auto" was left
+    #: selected -- today's only behaviour, so an old record with no field at
+    #: all is indistinguishable from one where Auto was chosen deliberately.
+    stated_mandate: str | None = None
+    #: Whether the stated mandate has been reconciled against the book's own
+    #: computed mandate yet. Irrelevant once stated_mandate is None.
+    mandate_resolved: bool = False
 
     @property
     def workbook(self) -> Path:
@@ -238,7 +250,8 @@ def get(portfolio_id: str) -> PortfolioRecord | None:
 
 
 def add(uploaded_name: str, data: bytes, display_name: str | None = None,
-        client=None, owner: str = "") -> PortfolioRecord:
+        client=None, owner: str = "", reporting_currency: str = "USD",
+        stated_mandate: str | None = None) -> PortfolioRecord:
     """Store an uploaded file and convert it to the canonical workbook.
 
     ``owner`` is the uploading account's email. It is what keeps one
@@ -277,6 +290,9 @@ def add(uploaded_name: str, data: bytes, display_name: str | None = None,
         warnings=result.warnings,
         used_model=result.used_model,
         owner=owner.strip().lower(),
+        reporting_currency=reporting_currency,
+        stated_mandate=stated_mandate,
+        mandate_resolved=(stated_mandate is None),
     )
 
     records = [r for r in _load_all() if r.id != record_id]
@@ -321,6 +337,19 @@ def remove(portfolio_id: str, owner: str) -> bool:
     shutil.rmtree(STORE_DIR / portfolio_id, ignore_errors=True)
     _save_registry(keep)
     return True
+
+
+def mark_mandate_resolved(portfolio_id: str) -> None:
+    """A stated-at-upload mandate has been reconciled -- agreed with the
+    book's own computed mandate and applied, or the analyst has chosen one of
+    the two after being shown the conflict. Either way it need not be checked
+    again."""
+    records = _load_all()
+    for record in records:
+        if record.id == portfolio_id:
+            record.mandate_resolved = True
+            _save_registry(records)
+            return
 
 
 def rename(portfolio_id: str, name: str, owner: str) -> bool:

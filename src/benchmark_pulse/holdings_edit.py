@@ -33,8 +33,9 @@ import pandas as pd
 from openpyxl import Workbook, load_workbook
 
 from .portfolio import (
-    SECTION_WORDS, _country_from_ticker, _find_header_row, _map_columns,
-    _norm, _normalise_country, normalise_ticker, parse_date, parse_number,
+    MARKET_CURRENCY, SECTION_WORDS, _country_from_ticker, _find_header_row,
+    _map_columns, _norm, _normalise_country, normalise_ticker, parse_date,
+    parse_number,
 )
 from .sectors import market_from_suffix
 
@@ -47,19 +48,6 @@ COLUMNS: list[str] = ["Security Name", "Ticker", "Ccy", "Quantity", "Avg Cost",
                       "Purchase Date", "Country", "Sector"]
 
 NUMERIC = ("Quantity", "Avg Cost")
-
-#: The currency a market trades in. Used only to prefill a new row: an analyst
-#: adding a Tadawul line should not have to remember that it settles in riyals,
-#: and the value stays editable because a cross-listing can contradict this.
-MARKET_CURRENCY: dict[str, str] = {
-    "US": "USD", "IN": "INR", "SA": "SAR", "GB": "GBP", "JP": "JPY",
-    "NL": "EUR", "DE": "EUR", "FR": "EUR", "IE": "EUR", "BE": "EUR",
-    "AT": "EUR", "IT": "EUR", "ES": "EUR", "FI": "EUR", "GR": "EUR",
-    "PT": "EUR", "DK": "DKK", "SE": "SEK", "NO": "NOK", "CH": "CHF",
-    "CA": "CAD", "AU": "AUD", "NZ": "NZD", "SG": "SGD", "HK": "HKD",
-    "CN": "CNY", "KR": "KRW", "TW": "TWD", "AE": "AED", "QA": "QAR",
-    "KW": "KWD", "BR": "BRL", "MX": "MXN", "ZA": "ZAR", "TR": "TRY",
-}
 
 #: A purchase date before this is a data-entry slip, not a long-term holding.
 _EARLIEST = date(1970, 1, 1)
@@ -370,6 +358,48 @@ def missing_markets(frame: pd.DataFrame) -> list[tuple[str, str, str]]:
     it decides the currency. A blank one is the more expensive of the two.
     """
     return missing(frame, "Country")
+
+
+def row_gaps(row, misses: dict) -> str:
+    """What still needs a look on one row, as a short label, or "" if
+    nothing does.
+
+    Ticker/Quantity/Purchase Date mirror validate()'s own required fields --
+    a save would refuse a blank one anyway, so it is worth a flag before that
+    point, not just at it. Country/Sector are flagged only once something has
+    genuinely tried and failed to place them (misses), or the cell is blank
+    outright; a value already stated in the file is never called a gap.
+    """
+    ticker = str(row.get("Ticker", "")).strip()
+    parts = []
+    if not str(row.get("Security Name", "")).strip():
+        parts.append("Security Name")
+    if not ticker:
+        parts.append("Ticker")
+    qty = row.get("Quantity")
+    if qty is None or (isinstance(qty, float) and pd.isna(qty)) or qty == 0:
+        parts.append("Quantity")
+    if row.get("Purchase Date") is None:
+        parts.append("Purchase Date")
+    if not str(row.get("Country", "")).strip() or (ticker, "Country") in misses:
+        parts.append("Country")
+    if not str(row.get("Sector", "")).strip() or (ticker, "Sector") in misses:
+        parts.append("Sector")
+    return ", ".join(parts)
+
+
+def review_order(frame: pd.DataFrame, misses: dict) -> list[str]:
+    """Row order for a just-uploaded book: every ticker with a gap first, in
+    the file's own order, then everything else. Frozen at upload time rather
+    than recomputed on every keystroke, so fixing the one cell being looked
+    at does not also move that row out from under the cursor.
+    """
+    tickers = [str(t).strip() for t in frame["Ticker"]]
+    flagged = [t for t, (_, row) in zip(tickers, frame.iterrows())
+               if row_gaps(row, misses)]
+    flagged_set = set(flagged)
+    rest = [t for t in tickers if t not in flagged_set]
+    return flagged + rest
 
 
 def fill_sectors(frame: pd.DataFrame, lookup):

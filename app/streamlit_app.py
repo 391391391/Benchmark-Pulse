@@ -28,6 +28,13 @@ import os
 import sys
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+#: Preferred Square is based in India, so the header clock reads in the
+#: firm's own local time rather than the server's (UTC on Streamlit Cloud).
+#: A named zone, not a fixed +5:30 offset, so it stays correct even if the
+#: rule ever changes; India has no daylight-saving shift to worry about.
+DISPLAY_TZ = ZoneInfo("Asia/Kolkata")
 from html import escape
 from pathlib import Path
 
@@ -96,7 +103,9 @@ def market_data(offline: bool, _stamp: float) -> MarketData:
 
 @st.cache_resource(show_spinner="Fetching live prices and benchmarking...")
 def run_analysis(book_path: str, offline: bool, name: str,
-                 _stamp: float, _revision: float = 0.0) -> PortfolioAnalysis:
+                 _stamp: float, _revision: float = 0.0,
+                 portfolio_id: str = "",
+                 reporting_currency: str = "USD") -> PortfolioAnalysis:
     """Analyse the book.
 
     ``_stamp`` is what makes the data live: it changes on every run of the
@@ -111,7 +120,8 @@ def run_analysis(book_path: str, offline: bool, name: str,
     rather than after a full refetch.
     """
     return analyse(book_path, md=market_data(offline, _stamp),
-                   portfolio_name=name)
+                   portfolio_name=name, portfolio_id=portfolio_id,
+                   reporting_currency=reporting_currency)
 
 
 @st.cache_resource(show_spinner="Reading the news...")
@@ -134,7 +144,9 @@ def company_filings(asset_id: str, name: str, country: str, _stamp: float):
 
 @st.cache_resource(show_spinner="Scoring recent performance...")
 def trend_scores(book_path: str, offline: bool, name: str,
-                 _stamp: float, _revision: float = 0.0) -> dict:
+                 _stamp: float, _revision: float = 0.0,
+                 portfolio_id: str = "",
+                 reporting_currency: str = "USD") -> dict:
     """Every holding's 3M, 6M and 12M alpha against its own benchmark.
 
     Cached with the analysis, because it reads the same two price series per
@@ -147,8 +159,8 @@ def trend_scores(book_path: str, offline: bool, name: str,
     # three-year record -- it is the *investor* who has no history, not the
     # stock. Filtering on `scored` here silently dropped a holding bought today
     # out of Winners and laggards entirely.
-    for holding in run_analysis(book_path, offline, name, _stamp,
-                                _revision).holdings:
+    for holding in run_analysis(book_path, offline, name, _stamp, _revision,
+                                portfolio_id, reporting_currency).holdings:
         try:
             windows = period_compare(
                 md.prices(holding.asset_id),
@@ -162,7 +174,8 @@ def trend_scores(book_path: str, offline: bool, name: str,
 @st.cache_resource(show_spinner="Measuring the last one and three years...")
 def mandate_windows(book_path: str, offline: bool, name: str,
                     benchmark_ticker: str, _stamp: float,
-                    _revision: float = 0.0) -> list:
+                    _revision: float = 0.0, portfolio_id: str = "",
+                    reporting_currency: str = "USD") -> list:
     """The book's one- and three-year return against its mandate benchmark.
 
     Keyed on the benchmark as well as the book, because changing the mandate
@@ -170,7 +183,8 @@ def mandate_windows(book_path: str, offline: bool, name: str,
     would leave the previous comparator's numbers on screen under a new name.
     """
     md = market_data(offline, _stamp)
-    analysis = run_analysis(book_path, offline, name, _stamp, _revision)
+    analysis = run_analysis(book_path, offline, name, _stamp, _revision,
+                            portfolio_id, reporting_currency)
     return windows_against([h.stream for h in analysis.holdings], md,
                            benchmark_ticker, analysis.reporting_currency)
 
@@ -405,7 +419,8 @@ def benchmark_cell(ticker: str) -> str:
     return brand.abbr(bench.name or ticker, bench.attribution)
 
 
-def benchmark_picker(decision, choices: dict, key: str) -> None:
+def benchmark_picker(decision, choices: dict, key: str,
+                     namespace: str = "") -> None:
     """Change the benchmark. A dropdown, and nothing else.
 
     This used to be a sign-off: pick, give a reason, press a button, and the
@@ -434,14 +449,23 @@ def benchmark_picker(decision, choices: dict, key: str) -> None:
 
     # Applied on selection. A separate confirm step would only ask the analyst
     # to agree with what they just clicked.
+    #
+    # namespace scopes the key to this portfolio for a portfolio-level
+    # decision (asset_id is the fixed literal "PORTFOLIO"), which would
+    # otherwise be shared -- and silently overwritten -- by every other
+    # portfolio's mandate the moment either had a non-"rules" decision on
+    # file. It must match analyse()'s own mandate_key exactly, or a mandate
+    # picked here would be saved under a different key than the one
+    # analyse() reads back on the next rerun, reverting it silently.
+    dec_key = f"{namespace}:{decision.asset_id}" if namespace else decision.asset_id
     saved = load_decisions()
-    current = saved.get(decision.asset_id, decision)
+    current = saved.get(dec_key, decision)
     # Parentheses, not angle brackets: the rationale is rendered as HTML and a
     # <name@example.com> is swallowed as an unknown tag, which silently dropped
     # the email from the audit trail on screen.
     override(current, picked, f"{user.name} ({user.email})",
              "selected from the benchmark list")
-    saved[decision.asset_id] = current
+    saved[dec_key] = current
     save_decisions(saved)
     st.cache_resource.clear()
     st.rerun()
@@ -459,15 +483,43 @@ def _upload_portfolio_form(owner: str) -> None:
         "Portfolio file", type=[ext.lstrip(".") for ext in SUPPORTED],
         help="Excel (.xlsx, .xlsm, .xls), CSV, PDF or PowerPoint (.pptx).",
     )
-    name = st.text_input("Portfolio name", value="",
-                         placeholder="e.g. Al Faisal Global Equity - Q3 2026")
+    # Suggested the moment a file is picked, rather than left blank: the
+    # sidebar portfolio switcher lists only this name, and two uploads that
+    # both fall back to a blank-derived "Statement" are genuinely
+    # indistinguishable there. Still fully editable and non-blocking.
+    suggested = Path(upload.name).stem.replace("_", " ").replace("-", " ").strip() if upload else ""
+    name = st.text_input(
+        "Portfolio name", value=suggested,
+        placeholder="e.g. Al Faisal Global Equity - Q3 2026")
+
+    AUTO_MANDATE = "Auto — detect from holdings"
+    picked_mandate = st.selectbox(
+        "Mandate", [AUTO_MANDATE] + [MANDATES[t].name for t in MANDATES],
+        index=0, key="upload_mandate",
+        help="The tool measures the book against its own composition "
+             "automatically. Set this only if you already know the mandate "
+             "and want it to stick.")
+    stated_ticker = None
+    if picked_mandate != AUTO_MANDATE:
+        stated_ticker = next(t for t in MANDATES
+                             if MANDATES[t].name == picked_mandate)
+
+    picked_currency = st.selectbox(
+        "Reporting currency", sorted(CURRENCY_NAMES), index=sorted(
+            CURRENCY_NAMES).index("USD"),
+        format_func=lambda c: f"{c} — {currency_name(c)}",
+        key="upload_currency",
+        help="What every portfolio-level figure (Cost, Market value, and "
+             "so on) is rolled up in. Leave on USD unless this book is "
+             "prepared for a committee that reports in something else.")
 
     if upload is not None and st.button("Read and analyse", type="primary"):
         with st.spinner("Reading the file..."):
             try:
                 new_record = portfolio_store.add(
                     upload.name, upload.getvalue(), name.strip() or None,
-                    owner=owner)
+                    owner=owner, reporting_currency=picked_currency,
+                    stated_mandate=stated_ticker)
             except IngestError as exc:
                 new_record = None
                 st.markdown(brand.card("Could not read this file", str(exc), "bad"),
@@ -548,8 +600,32 @@ def _upload_portfolio_form(owner: str) -> None:
             # success message about a book the screens are not showing.
             st.session_state.portfolio_id = new_record.id
             st.query_params[BOOK_PARAM] = new_record.id
-            st.success(f"Loaded **{new_record.name}** "
-                       f"({new_record.rows} rows from {new_record.source_format}).")
+            # Land on Manage holdings instead of staying here: it is the one
+            # editable table the tool has, and the analyst should see and be
+            # able to fix a gap the moment it exists, not go find it via the
+            # sidebar. Setting nav_view directly here would raise
+            # StreamlitWidgetAlreadyInstantiatedError -- the sidebar radio
+            # that owns that key has already rendered earlier in this same
+            # run. This flag is consumed instead, right before that radio
+            # re-instantiates on the fresh run st.rerun() below starts.
+            st.session_state["_redirect_to_manage_holdings"] = True
+            st.session_state.just_uploaded = {
+                "portfolio_id": new_record.id, "at": time.time()}
+            try:
+                review_grid = holdings_edit.read_holdings(new_record.workbook)
+                st.session_state.review_order = holdings_edit.review_order(
+                    review_grid, lost)
+            except Exception:  # noqa: BLE001 - ordering is a nicety, not a
+                # requirement; Manage holdings falls back to file order.
+                st.session_state.pop("review_order", None)
+            # Excel is read directly by the tolerant loader rather than
+            # counted at ingest time, so its row count is the same "not
+            # counted" 0 as an empty file -- showing it here would print
+            # "0 rows" on every successful Excel upload, the most common one.
+            st.success(
+                f"Loaded **{new_record.name}** "
+                f"({f'{new_record.rows} rows from ' if new_record.rows else ''}"
+                f"{new_record.source_format}).")
             st.rerun()
 
 
@@ -635,7 +711,16 @@ VIEWS = ["Portfolio overview", "Portfolio vs benchmark", "Winners and laggards",
 
 st.sidebar.markdown('<div class="ps-rail-label">Views</div>',
                     unsafe_allow_html=True)
-view = st.sidebar.radio("Views", VIEWS, label_visibility="collapsed")
+# A widget's session-state key can only be set before that widget is
+# instantiated in a given run -- setting it afterwards (e.g. from inside the
+# upload handler, which runs after this radio has already rendered) raises
+# StreamlitWidgetAlreadyInstantiatedError. The upload handler instead sets
+# this plain flag and calls st.rerun(); consumed here, on the fresh run,
+# strictly before the radio below is instantiated.
+if st.session_state.pop("_redirect_to_manage_holdings", False):
+    st.session_state["nav_view"] = "Manage holdings"
+view = st.sidebar.radio("Views", VIEWS, key="nav_view",
+                       label_visibility="collapsed")
 
 st.sidebar.markdown('<div class="ps-rail-label">Settings</div>',
                     unsafe_allow_html=True)
@@ -648,6 +733,12 @@ offline = st.sidebar.toggle(
 
 if st.sidebar.button("Refresh prices", use_container_width=True):
     st.cache_resource.clear()
+    # The button already re-fetches live prices correctly (clearing the
+    # cache forces that) -- but without this line, "prices as at HH:MM"
+    # keeps showing session-start time forever, because that label reads
+    # load_stamp, not whether a fetch just happened. The data was fresh;
+    # the clock on screen just never moved.
+    st.session_state.load_stamp = time.time()
     st.rerun()
 
 book = str(record.workbook)
@@ -670,10 +761,37 @@ if "load_stamp" not in st.session_state:
 # correction into a full refetch.
 book_rev = Path(book).stat().st_mtime
 analysis = run_analysis(book, offline, record.name,
-                        st.session_state.load_stamp, book_rev)
+                        st.session_state.load_stamp, book_rev,
+                        record.id, record.reporting_currency)
 market = market_data(offline, st.session_state.load_stamp)
 portfolio = analysis.portfolio
 scored = analysis.scored
+
+# A mandate stated at upload is reconciled against the book's own computed
+# mandate exactly once. Agreeing, it becomes the confirmed decision with no
+# further ceremony -- the same weight an analyst's own dropdown pick already
+# carries. Disagreeing, the computed decision is left standing (every figure
+# on screen stays measured against the book's actual composition, never an
+# unconfirmed guess) and a plain note says so, wherever the mandate is shown.
+if record.stated_mandate and not record.mandate_resolved and portfolio is not None:
+    if record.stated_mandate == portfolio.decision.benchmark_ticker:
+        override(portfolio.decision, record.stated_mandate,
+                 f"{user.name} ({user.email})", "stated at upload")
+        saved_decisions = load_decisions()
+        saved_decisions[f"{record.id}:PORTFOLIO"] = portfolio.decision
+        save_decisions(saved_decisions)
+        portfolio_store.mark_mandate_resolved(record.id)
+    else:
+        # Shown once, on whichever screen the analyst lands on next -- not
+        # gated behind a click, and not re-asked on every later visit. The
+        # computed mandate already governs every figure; changing it, if the
+        # stated one was right after all, is the same "Benchmark" dropdown
+        # that already exists for exactly this, not new UI.
+        st.session_state.mandate_conflict = {
+            "stated": record.stated_mandate,
+            "computed": portfolio.decision.benchmark_ticker,
+        }
+        portfolio_store.mark_mandate_resolved(record.id)
 
 live = not analysis.provider.startswith("stub")
 
@@ -767,7 +885,12 @@ st.markdown(
         + ", ".join(c for c in countries[:6] if c)
         + f"{DOT}<b>{analysis.reporting_currency}</b>"
         + f"{DOT}prices as at <b>"
-        + f"{datetime.fromtimestamp(st.session_state.load_stamp):%H:%M}</b>"
+        # Shown in the firm's own local time (India), explicitly labelled --
+        # fromtimestamp() with no tz renders in the SERVER's local clock,
+        # which is UTC on Streamlit Cloud and was never actually said on
+        # screen, so it silently looked like the wrong time to anyone here.
+        + (f"{datetime.fromtimestamp(st.session_state.load_stamp, tz=DISPLAY_TZ):%H:%M}"
+           " IST</b>")
         + (" (cached)" if offline else ""),
     ),
     unsafe_allow_html=True,
@@ -841,6 +964,30 @@ st.markdown(
     ]),
     unsafe_allow_html=True,
 )
+
+# LoadReport's own docstring says warnings and skipped rows are "surfaced in
+# the UI, never swallowed" -- but nothing ever rendered either one. A workbook
+# uploaded without a sheet literally named "Holdings" (or any row missing a
+# ticker/quantity/date) loaded as a silent, unexplained 0-position, $0 book:
+# no error anywhere on this screen, just numbers that looked like a broken
+# save. The real reason was one click away on Manage holdings, which is not
+# where anyone reviewing an empty portfolio would think to look.
+if analysis.load_report.warnings or analysis.load_report.skipped:
+    lines = list(analysis.load_report.warnings)
+    if analysis.load_report.skipped:
+        shown = analysis.load_report.skipped[:5]
+        n = len(analysis.load_report.skipped)
+        lines.append(
+            f"{n} row{'s' if n != 1 else ''} could not be read: "
+            + "; ".join(shown) + (" ..." if n > 5 else ""))
+    st.markdown(
+        brand.note(
+            "Some of this book did not load",
+            "<br>".join(escape(line) for line in lines),
+            "warn",
+        ),
+        unsafe_allow_html=True,
+    )
 
 # ------------------------------------------------------------ investments --
 
@@ -975,6 +1122,20 @@ elif view == "Portfolio vs benchmark":
     else:
         exposure = portfolio.exposure
 
+        conflict = st.session_state.pop("mandate_conflict", None)
+        if conflict:
+            stated_name = MANDATES[conflict["stated"]].name
+            computed_name = MANDATES[conflict["computed"]].name
+            st.markdown(
+                brand.note(
+                    "Stated mandate doesn't match this book's composition",
+                    f"You named this <b>{escape(stated_name)}</b> at upload. "
+                    f"Based on what was actually uploaded, it's currently "
+                    f"measured as <b>{escape(computed_name)}</b> instead -- "
+                    "change it below if the stated mandate should stand.",
+                    "warn"),
+                unsafe_allow_html=True)
+
         st.markdown('<div class="ps-section">Mandate</div>',
                     unsafe_allow_html=True)
         d = portfolio.decision
@@ -999,6 +1160,26 @@ elif view == "Portfolio vs benchmark":
                if d.source == "model" else ""),
             unsafe_allow_html=True,
         )
+        # The mandate itself is sized from every holding's value, scored or
+        # not -- a position bought this morning still has a price and still
+        # counts here. But a reviewer who sees "5 of 10" on Winners and
+        # laggards a minute later, right after reading "10 positions" on this
+        # same book, needs the explanation before that gap looks like a lost
+        # trade rather than a holding too new to have a whole-life return.
+        if len(scored) != len(analysis.holdings):
+            missing = len(analysis.holdings) - len(scored)
+            st.markdown(
+                brand.note(
+                    "Not every holding is scored yet",
+                    f"{missing} of {len(analysis.holdings)} holdings "
+                    "are too recent to have a scored return yet -- bought "
+                    "too recently for a whole-life return to be "
+                    "calculated. They still count toward this mandate "
+                    "and its exposure.",
+                    "warn",
+                ),
+                unsafe_allow_html=True,
+            )
         if d.rationale:
             # Escaped: a rationale is model output or contains an analyst's
             # email, and either can carry characters that render as markup.
@@ -1007,7 +1188,7 @@ elif view == "Portfolio vs benchmark":
                         unsafe_allow_html=True)
         st.markdown(brand.section("Change the benchmark"),
                     unsafe_allow_html=True)
-        benchmark_picker(d, MANDATES, "mandate")
+        benchmark_picker(d, MANDATES, "mandate", namespace=record.id)
 
         # -- return over a window ---------------------------------------------
         #
@@ -1026,7 +1207,8 @@ elif view == "Portfolio vs benchmark":
 
         windows = mandate_windows(book, offline, record.name,
                                   portfolio.decision.benchmark_ticker,
-                                  st.session_state.load_stamp, book_rev)
+                                  st.session_state.load_stamp, book_rev,
+                                  record.id, record.reporting_currency)
         usable = [w for w in windows if w.ok]
 
         if not usable:
@@ -1272,7 +1454,8 @@ elif view == "Winners and laggards":
             "you paid, or how much.")
 
     trends = trend_scores(book, offline, record.name,
-                          st.session_state.load_stamp, book_rev)
+                          st.session_state.load_stamp, book_rev,
+                          record.id, record.reporting_currency)
 
     def _pct(value):
         """A banded cell: the tint carries the verdict, the figure carries the
@@ -1919,6 +2102,17 @@ elif view == "Manage holdings":
     if flash:
         st.success(flash)
 
+    # Set by _upload_portfolio_form the moment this exact book was uploaded,
+    # and cleared the instant a different one is opened -- picking another
+    # portfolio from the sidebar is an unambiguous "I've moved on" signal, so
+    # no separate dismiss button is needed.
+    just_uploaded = st.session_state.get("just_uploaded")
+    landed_from_upload = bool(
+        just_uploaded and just_uploaded.get("portfolio_id") == record.id)
+    if just_uploaded and not landed_from_upload:
+        st.session_state.pop("just_uploaded", None)
+        st.session_state.pop("review_order", None)
+
     try:
         current = holdings_edit.read_holdings(record.workbook)
     except Exception as exc:  # noqa: BLE001
@@ -1929,6 +2123,29 @@ elif view == "Manage holdings":
             unsafe_allow_html=True)
 
     if current is not None:
+        if landed_from_upload:
+            misses = st.session_state.get("sector_misses", {})
+            n_gaps = sum(1 for _, row in current.iterrows()
+                        if holdings_edit.row_gaps(row, misses))
+            if n_gaps:
+                st.markdown(
+                    brand.note(
+                        f"Loaded {len(current)} position"
+                        f"{'s' if len(current) != 1 else ''}",
+                        f"{n_gaps} row{'s' if n_gaps != 1 else ''} below "
+                        "need a look before these figures are final -- "
+                        "they're sorted to the top of the table, under "
+                        "“Needs attention”.", "warn"),
+                    unsafe_allow_html=True)
+            else:
+                st.markdown(
+                    brand.note(
+                        f"Loaded {len(current)} position"
+                        f"{'s' if len(current) != 1 else ''}",
+                        "Nothing missing. Review the table below before "
+                        "treating these figures as final."),
+                    unsafe_allow_html=True)
+
         st.markdown(
             f'<div style="font-size:.78rem;color:{brand.MUTED};'
             f'margin:-.35rem 0 .5rem 0;">Editing <b>{escape(record.name)}</b>'
@@ -2231,10 +2448,36 @@ elif view == "Manage holdings":
                        if str(v).strip()}
             return sorted(set(base) - {"WW"} | present)
 
+        # Right after upload, gapped rows are sorted to the top so a 40-row
+        # book never buries the one missing cell at row 33 -- frozen at
+        # upload time (review_order), not recomputed on every keystroke,
+        # which would make a row jump the moment the analyst fixes the very
+        # cell they are looking at.
+        order = st.session_state.get("review_order") if landed_from_upload else None
+        if order:
+            position = {t: i for i, t in enumerate(order)}
+            current = current.iloc[sorted(
+                range(len(current)),
+                key=lambda i: position.get(
+                    str(current.iloc[i]["Ticker"]).strip(), len(order)))
+            ].reset_index(drop=True)
+
+        # A pointer, not an editor: st.data_editor cannot conditionally colour
+        # a cell or row, so what needs a look is named here in its own
+        # read-only column instead, and fixed by clicking the flagged cell in
+        # its own editable column alongside it. Generalised past Country/
+        # Sector to every field a save would otherwise refuse as incomplete.
+        misses = st.session_state.get("sector_misses", {})
+        current.insert(0, "Needs attention", [
+            holdings_edit.row_gaps(row, misses)
+            for _, row in current.iterrows()])
+
         edited = st.data_editor(
             current, key=f"grid_{record.id}_{st.session_state.get('grid_version', 0)}",
             num_rows="dynamic", use_container_width=True, hide_index=True,
             column_config={
+                "Needs attention": st.column_config.TextColumn(
+                    "Needs attention", width="medium", disabled=True),
                 "Security Name": st.column_config.TextColumn(
                     "Security", width="medium"),
                 "Ticker": st.column_config.TextColumn(

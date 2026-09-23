@@ -29,6 +29,10 @@ anthropic==1.5.0
 # --- supporting ------------------------------------------------------------
 python-dotenv==1.2.3
 SQLAlchemy==2.0.52
+tzdata==2026.4           # zoneinfo's timezone database -- not guaranteed to
+                         # exist on every host OS (notably Windows, and some
+                         # minimal Linux images), so pinned explicitly rather
+                         # than assumed present
 
 # --- development -----------------------------------------------------------
 pytest==9.1.1

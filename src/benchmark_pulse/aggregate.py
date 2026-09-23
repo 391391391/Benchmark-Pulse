@@ -39,7 +39,13 @@ def to_reporting_currency(stream: CashflowStream, md: MarketData,
         try:
             rate = md.fx_rate(stream.currency, reporting_ccy, flow.when)
         except Exception:  # noqa: BLE001 - a missing rate must not drop the flow
-            rate = md.fx_rate(stream.currency, reporting_ccy)
+            try:
+                rate = md.fx_rate(stream.currency, reporting_ccy)
+            except Exception:  # noqa: BLE001 - a genuinely unresolvable
+                # currency (e.g. a typo no feed recognises) must not crash
+                # the whole portfolio over one holding; current_values()
+                # below takes the same fallback for the same reason.
+                rate = 1.0
         converted.append(Cashflow(when=flow.when, amount=flow.amount * rate,
                                   kind=flow.kind))
     return converted
